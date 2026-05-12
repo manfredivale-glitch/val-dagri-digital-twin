@@ -34,43 +34,51 @@ config = {
 }
 c = config[coltura]
 
-# --- 3. LOGICA DI SISTEMA (NEXUS) ---
+# --- 3. LOGICA DI SISTEMA AVANZATA (NEXUS & SICCITA') ---
 data = []
 som = 1.5 
 for anno in range(1, 6):
     som += 0.15
     
-    # Effetto Agrivoltaico
-    riduzione_evaporazione = 0.75 if usa_agrivoltaico else 1.0
-    ricavo_energia_ha = 1800 if usa_agrivoltaico else 0 # Leggermente alzato per includere elasticità storage
+    # 1. SIMULAZIONE SICCITA' ESTREMA
+    # Se l'utente imposta un costo acqua > 0.5, il mercato impazzisce e il costo triplica
+    moltiplicatore_scarsita = 3.0 if costo_acqua > 0.5 else 1.0
+    costo_acqua_base_reale = costo_acqua * moltiplicatore_scarsita
     
-    # Bilancio Biomassa ed Energia
+    # 2. STRATEGIE NATURE-BASED (Bonus se non c'è fotovoltaico ma c'è rigenerazione)
+    # Rappresenta crediti di biodiversità o qualità premium del suolo
+    bonus_rigenerazione = 450 if not usa_agrivoltaico and biochar_input > 15 else 0
+    
+    # 3. BILANCIO IDRICO (Ombra + Biochar + Permacultura)
+    riduzione_evaporazione = 0.75 if usa_agrivoltaico else 1.0
+    ritenzione_idrica_ha = (som * 180) + (biochar_input * 3)
+    fabbisogno_base = c["fabbisogno_irr"] * riduzione_evaporazione
+    
+    # Qui la permacultura diventa vitale in caso di siccità (costo acqua alto)
+    fabbisogno_esterno = max(50, fabbisogno_base - (ritenzione_idrica_ha * 1.5) - (fabbisogno_base * efficienza_permacultura / 100))
+    
+    # 4. ENERGIA DA PIROLISI (Abbattimento costi pompaggio)
     biomassa_ha_tot = c["residuo_biomassa"] + biomassa_forestale
     biochar_prodotto_ha = biomassa_ha_tot / 4
     energia_pirolisi_mwh = (biochar_prodotto_ha * superficie_totale) * 2
+    costo_h2o_finale = max(0.05, costo_acqua_base_reale - (energia_pirolisi_mwh / 10000))
     
-    # Costo acqua dinamico
-    costo_acqua_effettivo = max(0.05, costo_acqua - (energia_pirolisi_mwh / 10000))
-    
-    # Bilancio Idrico
-    ritenzione_idrica_ha = (som * 180) + (biochar_input * 3)
-    fabbisogno_base = c["fabbisogno_irr"] * riduzione_evaporazione
-    fabbisogno_esterno = max(50, fabbisogno_base - (ritenzione_idrica_ha * 1.5) - (fabbisogno_base * efficienza_permacultura / 100))
-    
-    # Logistica e Biochar
+    # 5. LOGISTICA E BIOCHAR
     costo_log_unitario = max(35, 120 - (superficie_totale / 15))
     deficit_biochar = max(0, biochar_input - biochar_prodotto_ha)
     costo_logistica = deficit_biochar * costo_log_unitario
     
-    # Calcolo Margine
+    # 6. CALCOLO FINALE MARGINI
+    ricavo_energia_ha = 1800 if usa_agrivoltaico else 0
     resa = 4.5 * min(c["risp_biochar"], ritenzione_idrica_ha / 250)
-    ricavi = (resa * c["prezzo"]) + ricavo_energia_ha
-    costi = c["costo_base"] + costo_logistica + (fabbisogno_esterno * costo_acqua_effettivo) - (biochar_input * 15)
+    
+    ricavi = (resa * c["prezzo"]) + ricavo_energia_ha + bonus_rigenerazione
+    costi = c["costo_base"] + costo_logistica + (fabbisogno_esterno * costo_h2o_finale) - (biochar_input * 15)
     
     mol_ha = ricavi - costi
-    data.append([anno, som, ritenzione_idrica_ha, resa, mol_ha, costo_acqua_effettivo])
+    data.append([anno, som, ritenzione_idrica_ha, resa, mol_ha, costo_h2o_finale])
 
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro', 'Costo_H2O'])
+df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro', 'Costo_H2O_Finale'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
 col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
