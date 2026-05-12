@@ -15,48 +15,60 @@ anni = 5
 som = 1.5
 data = []
 # --- BLOCCO 1: SCELTA DELLA COLTURA ---
-coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Biodiversità Factory Mix"])
+# --- 1. CONFIGURAZIONE DELLE COLTURE (Fabbisogni e Prezzi) ---
+coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium"])
 
-# Parametri specifici per coltura (Efficienza e Prezzi)
 config = {
-    "Cereali Antichi": {"prezzo": 120, "costo_base": 500, "risposta_biochar": 1.1},
-    "Mandorle": {"prezzo": 450, "costo_base": 1200, "risposta_biochar": 1.4},
-    "Biodiversità Factory Mix": {"prezzo": 300, "costo_base": 800, "risposta_biochar": 1.2}
+    "Cereali Antichi": {
+        "prezzo": 120, 
+        "costo_base": 500, 
+        "risposta_biochar": 1.1,
+        "fabbisogno_irriguo_base": 400  # m3/ha (basso)
+    },
+    "Mandorle": {
+        "prezzo": 450, 
+        "costo_base": 1200, 
+        "risposta_biochar": 1.4,
+        "fabbisogno_irriguo_base": 1200 # m3/ha (alto)
+    },
+    "Orticole Premium": {
+        "prezzo": 350, 
+        "costo_base": 1500, 
+        "risposta_biochar": 1.6,
+        "fabbisogno_irriguo_base": 2500 # m3/ha (molto alto)
+    }
 }
 c = config[coltura]
 
-# --- BLOCCO 2: LOGICA RAFFINATA (Il Cuore del Digital Twin) ---
+# --- 2. LOGICA DI CALCOLO DINAMICA ---
 data = []
-som = 1.5 # Sostanza organica iniziale
+som = 1.5 
 for anno in range(1, 6):
-    som += 0.15 
+    som += 0.15
     
-    # Lo stock idrico beneficia della porosità del biochar
+    # Stock idrico (la "spugna")
     ritenzione_idrica = (som * 180) + (biochar_input * 3)
     
-    # 1. Efficienza Nutritiva: il biochar riduce il costo dei concimi (meno sprechi)
-    risparmio_input = biochar_input * 12 # Risparmiamo 12€/ton di biochar in concimi
+    # RISPOSTA ALL'ACQUA: 
+    # Calcoliamo quanto dell'acqua necessaria viene coperta dalla "spugna"
+    # Più biochar metti, più abbatti il fabbisogno esterno
+    fabbisogno_esterno = max(100, c["fabbisogno_irriguo_base"] - (ritenzione_idrica * 1.8))
+    costo_acqua_annuo = fabbisogno_esterno * costo_acqua
+    
+    # Efficienza input (concimi)
+    risparmio_input = biochar_input * 12
     costo_op_netto = c["costo_base"] - risparmio_input
     
-    # 2. Resilienza Resa: la resa è protetta dallo stock idrico
+    # Resa
     resa = 4.5 * min(c["risposta_biochar"], ritenzione_idrica / 250)
     
-    # 3. Risparmio Idrico: meno pompaggio dall'esterno
-    fabbisogno_esterno = max(0, 400 - (ritenzione_idrica * 0.6))
-    costo_acqua_tot = fabbisogno_esterno * costo_acqua
-    
-    # 4. Calcolo Margine (MOL)
+    # MOL
     ricavi = resa * c["prezzo"]
-    mol = ricavi - costo_acqua_tot - costo_op_netto
+    mol = ricavi - costo_acqua_annuo - costo_op_netto
     
     data.append([anno, som, ritenzione_idrica, resa, mol])
 
-# --- BLOCCO 3: OUTPUT ---
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
-
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
-
-# Visualizzazione dati
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
 col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
