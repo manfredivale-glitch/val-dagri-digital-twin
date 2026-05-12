@@ -20,7 +20,6 @@ superficie_totale = st.sidebar.number_input("Superficie Progetto (ha)", 10, 5000
 biomassa_forestale = st.sidebar.slider("Biomassa dai boschi (ton/ha)", 0, 50, 10)
 
 st.sidebar.subheader("Nexus Energetico")
-# Modulazione Agrivoltaico: da 0% (spento) a 100% (copertura totale)
 copertura_agrivoltaico = st.sidebar.slider("Copertura Agrivoltaico (%)", 0, 100, 0)
 efficienza_permacultura = st.sidebar.slider("Efficienza Permacultura (%)", 0, 100, 20)
 
@@ -34,41 +33,48 @@ config = {
 }
 c = config[coltura]
 
-# --- 2. LOGICA DI CALCOLO DINAMICA ---
+# --- 2. LOGICA DI CALCOLO DINAMICA (NEXUS COMPLETO) ---
 data = []
 som = 1.5 
 for anno in range(1, 6):
     som += 0.15
     
-    # Effetto Modulato Agrivoltaico
-    # Più copertura = meno evaporazione (fino a -40%) ma anche più costi di gestione
+    # A. Effetto Modulato Agrivoltaico (Ombra e Ricavi)
     riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
     ricavo_energia_ha = 2200 * (copertura_agrivoltaico / 100)
     
-    # Bonus Rigenerazione (decresce se l'energia diventa predominante)
+    # B. Bonus Rigenerazione (decresce se l'energia diventa predominante)
     bonus_rigenerazione = max(0, 500 * (1 - copertura_agrivoltaico/100)) if biochar_input > 15 else 0
     
-    # Bilancio Idrico Critico
+    # C. Bilancio Idrico Critico (Siccità e Permacultura)
     costo_h2o_base = costo_acqua * (3.0 if costo_acqua > 0.5 else 1.0)
     ritenzione_idrica = (som * 180) + (biochar_input * 3)
     fabbisogno_base = c["fabbisogno_irr"] * riduzione_evap
     
-    # La permacultura qui pesa di più perché agisce sul fabbisogno modulato
+    # La permacultura agisce sul fabbisogno reale
     risparmio_perm = fabbisogno_base * (efficienza_permacultura / 100)
     fabbisogno_est = max(50, fabbisogno_base - (ritenzione_idrica * 1.5) - risparmio_perm)
     
-    # Economia di scala logistica (punto di break-even della biomassa)
-    # Sopra i 200 ha, il costo logistico crolla perché l'infrastruttura è ammortizzata
-    costo_log_unitario = 150 * (0.8 ** (superficie_totale / 200))
+    # D. Economia di Scala e Biomassa
     biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
+    # Il costo logistico scende all'aumentare della scala
+    costo_log_unitario = 150 * (0.8 ** (superficie_totale / 500))
     deficit = max(0, biochar_input - biochar_auto)
     costo_logistica = deficit * costo_log_unitario
     
-    mol_ha = (resa * c["prezzo"]) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_base)
+    # E. Produzione Energetica da Pirolisi (abbatte costo acqua)
+    energia_pirolisi = (biochar_auto * superficie_totale) * 2
+    costo_h2o_finale = max(0.05, costo_h2o_base - (energia_pirolisi / 10000))
     
-    data.append([anno, som, ritenzione_idrica, mol_ha])
+    # F. Calcolo Resa (La variabile mancante!)
+    resa = 4.5 * min(c["risp_biochar"], ritenzione_idrica / 250)
+    
+    # G. Margine Operativo Lordo (MOL)
+    mol_ha = (resa * c["prezzo"]) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
+    
+    data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'MOL_Euro'])
+df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
 col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
