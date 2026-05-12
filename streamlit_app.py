@@ -14,14 +14,45 @@ costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
 anni = 5
 som = 1.5
 data = []
-for anno in range(1, anni + 1):
-    som += 0.15 # Incremento rigenerativo
+# --- BLOCCO 1: SCELTA DELLA COLTURA ---
+coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Biodiversità Factory Mix"])
+
+# Parametri specifici per coltura (Efficienza e Prezzi)
+config = {
+    "Cereali Antichi": {"prezzo": 120, "costo_base": 500, "risposta_biochar": 1.1},
+    "Mandorle": {"prezzo": 450, "costo_base": 1200, "risposta_biochar": 1.4},
+    "Biodiversità Factory Mix": {"prezzo": 300, "costo_base": 800, "risposta_biochar": 1.2}
+}
+c = config[coltura]
+
+# --- BLOCCO 2: LOGICA RAFFINATA (Il Cuore del Digital Twin) ---
+data = []
+som = 1.5 # Sostanza organica iniziale
+for anno in range(1, 6):
+    som += 0.15 
+    
+    # Lo stock idrico beneficia della porosità del biochar
     ritenzione_idrica = (som * 180) + (biochar_input * 3)
-    resa = 4.5 * min(1.2, ritenzione_idrica / 300)
-    risparmio_idrico = max(0, 400 - (ritenzione_idrica * 0.5))
-    costo_tot_acqua = risparmio_idrico * costo_acqua
-    mol = (resa * prezzo_premium) - costo_tot_acqua - 800
+    
+    # 1. Efficienza Nutritiva: il biochar riduce il costo dei concimi (meno sprechi)
+    risparmio_input = biochar_input * 12 # Risparmiamo 12€/ton di biochar in concimi
+    costo_op_netto = c["costo_base"] - risparmio_input
+    
+    # 2. Resilienza Resa: la resa è protetta dallo stock idrico
+    resa = 4.5 * min(c["risposta_biochar"], ritenzione_idrica / 250)
+    
+    # 3. Risparmio Idrico: meno pompaggio dall'esterno
+    fabbisogno_esterno = max(0, 400 - (ritenzione_idrica * 0.6))
+    costo_acqua_tot = fabbisogno_esterno * costo_acqua
+    
+    # 4. Calcolo Margine (MOL)
+    ricavi = resa * c["prezzo"]
+    mol = ricavi - costo_acqua_tot - costo_op_netto
+    
     data.append([anno, som, ritenzione_idrica, resa, mol])
+
+# --- BLOCCO 3: OUTPUT ---
+df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
 
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
 
