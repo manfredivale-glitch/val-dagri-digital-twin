@@ -14,18 +14,18 @@ costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
 anni = 5
 som = 1.5
 data = []
-# --- 1. CONFIGURAZIONE INPUT (SIDEBAR) ---
-st.sidebar.header("Parametri di Distretto")
-superficie_totale = st.sidebar.number_input("Superficie Totale Progetto (ha)", 10, 5000, 500)
-biomassa_forestale = st.sidebar.slider("Biomassa da boschi confinanti (ton/ha)", 0, 50, 10)
+# --- 1. CONFIGURAZIONE AVANZATA (SIDEBAR) ---
+st.sidebar.header("Parametri di Scala e Ottimizzazione")
+superficie_totale = st.sidebar.number_input("Superficie Progetto (ha)", 10, 5000, 500)
+biomassa_forestale = st.sidebar.slider("Biomassa dai boschi (ton/ha)", 0, 50, 10)
 
-st.sidebar.subheader("Infrastruttura Energetica e Idrica")
-usa_agrivoltaico = st.sidebar.checkbox("Attiva Agrivoltaico", value=False)
-efficienza_permacultura = st.sidebar.slider("Efficienza Raccolta Acqua (Ponds/Swales %)", 0, 50, 20)
+st.sidebar.subheader("Nexus Energetico")
+# Modulazione Agrivoltaico: da 0% (spento) a 100% (copertura totale)
+copertura_agrivoltaico = st.sidebar.slider("Copertura Agrivoltaico (%)", 0, 100, 0)
+efficienza_permacultura = st.sidebar.slider("Efficienza Permacultura (%)", 0, 100, 20)
 
 coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
 
-# --- 2. DIZIONARIO CONFIGURAZIONE ---
 config = {
     "Cereali Antichi": {"prezzo": 160, "costo_base": 500, "risp_biochar": 1.1, "fabbisogno_irr": 400, "residuo_biomassa": 5.0},
     "Mandorle": {"prezzo": 450, "costo_base": 1200, "risp_biochar": 1.4, "fabbisogno_irr": 1200, "residuo_biomassa": 3.0},
@@ -34,51 +34,41 @@ config = {
 }
 c = config[coltura]
 
-# --- 3. LOGICA DI SISTEMA AVANZATA (NEXUS & SICCITA') ---
+# --- 2. LOGICA DI CALCOLO DINAMICA ---
 data = []
 som = 1.5 
 for anno in range(1, 6):
     som += 0.15
     
-    # 1. SIMULAZIONE SICCITA' ESTREMA
-    # Se l'utente imposta un costo acqua > 0.5, il mercato impazzisce e il costo triplica
-    moltiplicatore_scarsita = 3.0 if costo_acqua > 0.5 else 1.0
-    costo_acqua_base_reale = costo_acqua * moltiplicatore_scarsita
+    # Effetto Modulato Agrivoltaico
+    # Più copertura = meno evaporazione (fino a -40%) ma anche più costi di gestione
+    riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
+    ricavo_energia_ha = 2200 * (copertura_agrivoltaico / 100)
     
-    # 2. STRATEGIE NATURE-BASED (Bonus se non c'è fotovoltaico ma c'è rigenerazione)
-    # Rappresenta crediti di biodiversità o qualità premium del suolo
-    bonus_rigenerazione = 450 if not usa_agrivoltaico and biochar_input > 15 else 0
+    # Bonus Rigenerazione (decresce se l'energia diventa predominante)
+    bonus_rigenerazione = max(0, 500 * (1 - copertura_agrivoltaico/100)) if biochar_input > 15 else 0
     
-    # 3. BILANCIO IDRICO (Ombra + Biochar + Permacultura)
-    riduzione_evaporazione = 0.75 if usa_agrivoltaico else 1.0
-    ritenzione_idrica_ha = (som * 180) + (biochar_input * 3)
-    fabbisogno_base = c["fabbisogno_irr"] * riduzione_evaporazione
+    # Bilancio Idrico Critico
+    costo_h2o_base = costo_acqua * (3.0 if costo_acqua > 0.5 else 1.0)
+    ritenzione_idrica = (som * 180) + (biochar_input * 3)
+    fabbisogno_base = c["fabbisogno_irr"] * riduzione_evap
     
-    # Qui la permacultura diventa vitale in caso di siccità (costo acqua alto)
-    fabbisogno_esterno = max(50, fabbisogno_base - (ritenzione_idrica_ha * 1.5) - (fabbisogno_base * efficienza_permacultura / 100))
+    # La permacultura qui pesa di più perché agisce sul fabbisogno modulato
+    risparmio_perm = fabbisogno_base * (efficienza_permacultura / 100)
+    fabbisogno_est = max(50, fabbisogno_base - (ritenzione_idrica * 1.5) - risparmio_perm)
     
-    # 4. ENERGIA DA PIROLISI (Abbattimento costi pompaggio)
-    biomassa_ha_tot = c["residuo_biomassa"] + biomassa_forestale
-    biochar_prodotto_ha = biomassa_ha_tot / 4
-    energia_pirolisi_mwh = (biochar_prodotto_ha * superficie_totale) * 2
-    costo_h2o_finale = max(0.05, costo_acqua_base_reale - (energia_pirolisi_mwh / 10000))
+    # Economia di scala logistica (punto di break-even della biomassa)
+    # Sopra i 200 ha, il costo logistico crolla perché l'infrastruttura è ammortizzata
+    costo_log_unitario = 150 * (0.8 ** (superficie_totale / 200))
+    biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
+    deficit = max(0, biochar_input - biochar_auto)
+    costo_logistica = deficit * costo_log_unitario
     
-    # 5. LOGISTICA E BIOCHAR
-    costo_log_unitario = max(35, 120 - (superficie_totale / 15))
-    deficit_biochar = max(0, biochar_input - biochar_prodotto_ha)
-    costo_logistica = deficit_biochar * costo_log_unitario
+    mol_ha = (resa * c["prezzo"]) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_base)
     
-    # 6. CALCOLO FINALE MARGINI
-    ricavo_energia_ha = 1800 if usa_agrivoltaico else 0
-    resa = 4.5 * min(c["risp_biochar"], ritenzione_idrica_ha / 250)
-    
-    ricavi = (resa * c["prezzo"]) + ricavo_energia_ha + bonus_rigenerazione
-    costi = c["costo_base"] + costo_logistica + (fabbisogno_esterno * costo_h2o_finale) - (biochar_input * 15)
-    
-    mol_ha = ricavi - costi
-    data.append([anno, som, ritenzione_idrica_ha, resa, mol_ha, costo_h2o_finale])
+    data.append([anno, som, ritenzione_idrica, mol_ha])
 
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro', 'Costo_H2O_Finale'])
+df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'MOL_Euro'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
 col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
