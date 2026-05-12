@@ -14,14 +14,18 @@ costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
 anni = 5
 som = 1.5
 data = []
-# --- 1. CONFIGURAZIONE AGRI-TECH E NEXUS ---
+# --- 1. CONFIGURAZIONE INPUT (SIDEBAR) ---
+st.sidebar.header("Parametri di Distretto")
+superficie_totale = st.sidebar.number_input("Superficie Totale Progetto (ha)", 10, 5000, 500)
+biomassa_forestale = st.sidebar.slider("Biomassa da boschi confinanti (ton/ha)", 0, 50, 10)
+
 st.sidebar.subheader("Infrastruttura Energetica e Idrica")
 usa_agrivoltaico = st.sidebar.checkbox("Attiva Agrivoltaico", value=False)
 efficienza_permacultura = st.sidebar.slider("Efficienza Raccolta Acqua (Ponds/Swales %)", 0, 50, 20)
 
 coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
 
-# DEFINIZIONE DEL DIZIONARIO CONFIG (Assicurati che non ci siano spazi prima di 'config')
+# --- 2. DIZIONARIO CONFIGURAZIONE ---
 config = {
     "Cereali Antichi": {"prezzo": 160, "costo_base": 500, "risp_biochar": 1.1, "fabbisogno_irr": 400, "residuo_biomassa": 5.0},
     "Mandorle": {"prezzo": 450, "costo_base": 1200, "risp_biochar": 1.4, "fabbisogno_irr": 1200, "residuo_biomassa": 3.0},
@@ -30,46 +34,43 @@ config = {
 }
 c = config[coltura]
 
-# --- 2. LOGICA DI SISTEMA COMPLESSO (NEXUS) ---
+# --- 3. LOGICA DI SISTEMA (NEXUS) ---
 data = []
 som = 1.5 
 for anno in range(1, 6):
     som += 0.15
     
-    # Effetto Ombra Agrivoltaico
+    # Effetto Agrivoltaico
     riduzione_evaporazione = 0.75 if usa_agrivoltaico else 1.0
-    ricavo_energia_ha = 1500 if usa_agrivoltaico else 0
+    ricavo_energia_ha = 1800 if usa_agrivoltaico else 0 # Leggermente alzato per includere elasticità storage
     
-    # Bilancio Biomassa ed Energia da Pirolisi
-    biomassa_totale = (c["residuo_biomassa"] + biomassa_forestale) * superficie_totale
-    biochar_totale = biomassa_totale / 4
-    energia_pirolisi_mwh = biochar_totale * 2
+    # Bilancio Biomassa ed Energia
+    biomassa_ha_tot = c["residuo_biomassa"] + biomassa_forestale
+    biochar_prodotto_ha = biomassa_ha_tot / 4
+    energia_pirolisi_mwh = (biochar_prodotto_ha * superficie_totale) * 2
     
-    # Costo acqua influenzato dall'energia autoprodotta
-    costo_acqua_effettivo = max(0.05, costo_acqua - (energia_pirolisi_mwh / 5000))
+    # Costo acqua dinamico
+    costo_acqua_effettivo = max(0.05, costo_acqua - (energia_pirolisi_mwh / 10000))
     
     # Bilancio Idrico
     ritenzione_idrica_ha = (som * 180) + (biochar_input * 3)
-    fabbisogno_base_netto = c["fabbisogno_irr"] * riduzione_evaporazione
-    fabbisogno_esterno = max(50, fabbisogno_base_netto - (ritenzione_idrica_ha * 1.5) - (fabbisogno_base_netto * efficienza_permacultura / 100))
+    fabbisogno_base = c["fabbisogno_irr"] * riduzione_evaporazione
+    fabbisogno_esterno = max(50, fabbisogno_base - (ritenzione_idrica_ha * 1.5) - (fabbisogno_base * efficienza_permacultura / 100))
     
-    # Logistica e deficit biochar
-    costo_log_unitario = max(40, 120 - (superficie_totale / 10))
-    # Calcolo del biochar prodotto per ettaro (totale / superficie)
-    biochar_prodotto_ha = biomassa_totale / superficie_totale / 4
+    # Logistica e Biochar
+    costo_log_unitario = max(35, 120 - (superficie_totale / 15))
     deficit_biochar = max(0, biochar_input - biochar_prodotto_ha)
     costo_logistica = deficit_biochar * costo_log_unitario
     
-    # Calcolo Finale Margini
+    # Calcolo Margine
     resa = 4.5 * min(c["risp_biochar"], ritenzione_idrica_ha / 250)
-    ricavi_totali_ha = (resa * c["prezzo"]) + ricavo_energia_ha
-    costi_totali_ha = c["costo_base"] + costo_logistica + (fabbisogno_esterno * costo_acqua_effettivo) - (biochar_input * 15)
+    ricavi = (resa * c["prezzo"]) + ricavo_energia_ha
+    costi = c["costo_base"] + costo_logistica + (fabbisogno_esterno * costo_acqua_effettivo) - (biochar_input * 15)
     
-    mol_ha = ricavi_totali_ha - costi_totali_ha
-    
-    data.append([anno, som, ritenzione_idrica_ha, resa, mol_ha, ricavo_energia_ha])
+    mol_ha = ricavi - costi
+    data.append([anno, som, ritenzione_idrica_ha, resa, mol_ha, costo_acqua_effettivo])
 
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro', 'Ricavo_Energy'])
+df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro', 'Costo_H2O'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
 col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
