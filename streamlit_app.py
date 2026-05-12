@@ -65,7 +65,8 @@ for anno in range(1, 6):
     
     data.append([anno, som, ritenzione_idrica, resa_effettiva, mol])
 
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])st.subheader("Evoluzione Economica ed Ecologica")
+df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
+st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
 col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
 col2.metric("MOL Finale (€/ha)", f"{round(df['MOL_Euro'].iloc[-1], 0)}€")
