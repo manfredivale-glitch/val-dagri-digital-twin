@@ -14,40 +14,56 @@ costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
 anni = 5
 som = 1.5
 data = []
-# --- 1. CONFIGURAZIONE AGRI-TECH ---
-st.sidebar.subheader("Infrastruttura Energetica")
+# --- 1. CONFIGURAZIONE AGRI-TECH E NEXUS ---
+st.sidebar.subheader("Infrastruttura Energetica e Idrica")
 usa_agrivoltaico = st.sidebar.checkbox("Attiva Agrivoltaico", value=False)
-efficienza_storage = st.sidebar.slider("Efficienza Storage (Ponds/Batterie %)", 0, 100, 30)
+efficienza_permacultura = st.sidebar.slider("Efficienza Raccolta Acqua (Ponds/Swales %)", 0, 50, 20)
 
-# (Manteniamo il dizionario config invariato)
+coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
+
+# DEFINIZIONE DEL DIZIONARIO CONFIG (Assicurati che non ci siano spazi prima di 'config')
+config = {
+    "Cereali Antichi": {"prezzo": 160, "costo_base": 500, "risp_biochar": 1.1, "fabbisogno_irr": 400, "residuo_biomassa": 5.0},
+    "Mandorle": {"prezzo": 450, "costo_base": 1200, "risp_biochar": 1.4, "fabbisogno_irr": 1200, "residuo_biomassa": 3.0},
+    "Orticole Premium": {"prezzo": 350, "costo_base": 1500, "risp_biochar": 1.6, "fabbisogno_irr": 2500, "residuo_biomassa": 1.5},
+    "Mix Biodiversità": {"prezzo": 280, "costo_base": 700, "risp_biochar": 1.3, "fabbisogno_irr": 600, "residuo_biomassa": 8.0}
+}
 c = config[coltura]
 
-# --- 2. LOGICA NEXUS AVANZATA ---
+# --- 2. LOGICA DI SISTEMA COMPLESSO (NEXUS) ---
 data = []
 som = 1.5 
 for anno in range(1, 6):
     som += 0.15
     
-    # 1. EFFETTO AGRI-VOLTAICO
-    ricavo_energia_ha = 1500 if usa_agrivoltaico else 0 # Stima prudenziale vendita energia/ha
-    # L'ombreggiamento riduce l'evaporazione (risparmio idrico del 25%)
+    # Effetto Ombra Agrivoltaico
     riduzione_evaporazione = 0.75 if usa_agrivoltaico else 1.0
+    ricavo_energia_ha = 1500 if usa_agrivoltaico else 0
     
-    # 2. BILANCIO IDRICO CON STORAGE E PERMACULTURA
+    # Bilancio Biomassa ed Energia da Pirolisi
+    biomassa_totale = (c["residuo_biomassa"] + biomassa_forestale) * superficie_totale
+    biochar_totale = biomassa_totale / 4
+    energia_pirolisi_mwh = biochar_totale * 2
+    
+    # Costo acqua influenzato dall'energia autoprodotta
+    costo_acqua_effettivo = max(0.05, costo_acqua - (energia_pirolisi_mwh / 5000))
+    
+    # Bilancio Idrico
     ritenzione_idrica_ha = (som * 180) + (biochar_input * 3)
-    # L'efficienza storage permette di usare l'acqua piovana stoccata nei ponds
     fabbisogno_base_netto = c["fabbisogno_irr"] * riduzione_evaporazione
     fabbisogno_esterno = max(50, fabbisogno_base_netto - (ritenzione_idrica_ha * 1.5) - (fabbisogno_base_netto * efficienza_permacultura / 100))
     
-    # 3. ENERGIA E COSTI
-    biomassa_totale = (c["residuo_biomassa"] + biomassa_forestale) * superficie_totale
-    energia_pirolisi = (biomassa_totale / 4) * 2 # MWh prodotti
-    costo_acqua_effettivo = max(0.05, costo_acqua - (energia_pirolisi / 5000))
+    # Logistica e deficit biochar
+    costo_log_unitario = max(40, 120 - (superficie_totale / 10))
+    # Calcolo del biochar prodotto per ettaro (totale / superficie)
+    biochar_prodotto_ha = biomassa_totale / superficie_totale / 4
+    deficit_biochar = max(0, biochar_input - biochar_prodotto_ha)
+    costo_logistica = deficit_biochar * costo_log_unitario
     
-    # 4. CALCOLO MOL COMPLESSIVO (Agro + Energy)
+    # Calcolo Finale Margini
     resa = 4.5 * min(c["risp_biochar"], ritenzione_idrica_ha / 250)
     ricavi_totali_ha = (resa * c["prezzo"]) + ricavo_energia_ha
-    costi_totali_ha = c["costo_base"] + (deficit_biochar * 120) + (fabbisogno_esterno * costo_acqua_effettivo) - (biochar_input * 15)
+    costi_totali_ha = c["costo_base"] + costo_logistica + (fabbisogno_esterno * costo_acqua_effettivo) - (biochar_input * 15)
     
     mol_ha = ricavi_totali_ha - costi_totali_ha
     
