@@ -14,58 +14,46 @@ costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
 anni = 5
 som = 1.5
 data = []
-# --- BLOCCO 1: SCELTA DELLA COLTURA ---
-# --- 1. CONFIGURAZIONE INPUT AGGIUNTIVI E COLTURE ---
-st.sidebar.subheader("Approvvigionamento Biomassa")
-# Slider per prelevare biomassa dai boschi confinanti (ton/ha)
-biomassa_forestale = st.sidebar.slider("Biomassa da boschi confinanti (ton/ha)", 0, 50, 10)
+# --- 1. CONFIGURAZIONE AGRI-TECH ---
+st.sidebar.subheader("Infrastruttura Energetica")
+usa_agrivoltaico = st.sidebar.checkbox("Attiva Agrivoltaico", value=False)
+efficienza_storage = st.sidebar.slider("Efficienza Storage (Ponds/Batterie %)", 0, 100, 30)
 
-coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
-
-config = {
-    "Cereali Antichi": {"prezzo": 160, "costo_base": 500, "risp_biochar": 1.1, "fabbisogno_irr": 400, "residuo_biomassa": 5.0},
-    "Mandorle": {"prezzo": 450, "costo_base": 1200, "risp_biochar": 1.4, "fabbisogno_irr": 1200, "residuo_biomassa": 3.0},
-    "Orticole Premium": {"prezzo": 350, "costo_base": 1500, "risp_biochar": 1.6, "fabbisogno_irr": 2500, "residuo_biomassa": 1.5},
-    "Mix Biodiversità": {"prezzo": 280, "costo_base": 700, "risp_biochar": 1.3, "fabbisogno_irr": 600, "residuo_biomassa": 8.0}
-}
+# (Manteniamo il dizionario config invariato)
 c = config[coltura]
 
-# --- 2. LOGICA DI AUTOPRODUZIONE E REALISMO ---
+# --- 2. LOGICA NEXUS AVANZATA ---
 data = []
 som = 1.5 
 for anno in range(1, 6):
-    som += 0.15 # Incremento organico annuo (prudenziale per climi caldi)
+    som += 0.15
     
-    # Bilancio Biomassa: quanto ne produciamo noi + quanto ne prendiamo dal bosco
-    biomassa_totale_disponibile = c["residuo_biomassa"] + biomassa_forestale
+    # 1. EFFETTO AGRI-VOLTAICO
+    ricavo_energia_ha = 1500 if usa_agrivoltaico else 0 # Stima prudenziale vendita energia/ha
+    # L'ombreggiamento riduce l'evaporazione (risparmio idrico del 25%)
+    riduzione_evaporazione = 0.75 if usa_agrivoltaico else 1.0
     
-    # Resa pirolisi (25%): ogni 4 ton di biomassa = 1 ton biochar
-    biochar_producibile_in_loco = biomassa_totale_disponibile / 4
+    # 2. BILANCIO IDRICO CON STORAGE E PERMACULTURA
+    ritenzione_idrica_ha = (som * 180) + (biochar_input * 3)
+    # L'efficienza storage permette di usare l'acqua piovana stoccata nei ponds
+    fabbisogno_base_netto = c["fabbisogno_irr"] * riduzione_evaporazione
+    fabbisogno_esterno = max(50, fabbisogno_base_netto - (ritenzione_idrica_ha * 1.5) - (fabbisogno_base_netto * efficienza_permacultura / 100))
     
-    # Se l'utente vuole più biochar (biochar_input) di quello producibile, paga logistica esterna
-    # Se invece ne avanza, ipotizziamo un risparmio o vendita (qui semplificato a costo 0)
-    deficit_biochar = max(0, biochar_input - biochar_producibile_in_loco)
-    costo_logistica_esterna = deficit_biochar * 120 # 120€/t costo logistico realistico
+    # 3. ENERGIA E COSTI
+    biomassa_totale = (c["residuo_biomassa"] + biomassa_forestale) * superficie_totale
+    energia_pirolisi = (biomassa_totale / 4) * 2 # MWh prodotti
+    costo_acqua_effettivo = max(0.05, costo_acqua - (energia_pirolisi / 5000))
     
-    # Calcolo ritenzione e resa
-    ritenzione_idrica = (som * 180) + (biochar_input * 3)
+    # 4. CALCOLO MOL COMPLESSIVO (Agro + Energy)
+    resa = 4.5 * min(c["risp_biochar"], ritenzione_idrica_ha / 250)
+    ricavi_totali_ha = (resa * c["prezzo"]) + ricavo_energia_ha
+    costi_totali_ha = c["costo_base"] + (deficit_biochar * 120) + (fabbisogno_esterno * costo_acqua_effettivo) - (biochar_input * 15)
     
-    # Fabbisogno idrico che scende grazie alla spugna nel suolo
-    fabbisogno_esterno = max(100, c["fabbisogno_irr"] - (ritenzione_idrica * 1.5))
-    costo_acqua_annuo = fabbisogno_esterno * costo_acqua
+    mol_ha = ricavi_totali_ha - costi_totali_ha
     
-    # Efficienza input e risparmio chimica
-    risparmio_input = biochar_input * 15
-    costo_op_netto = c["costo_base"] + costo_logistica_esterna - risparmio_input
-    
-    # Calcolo Resa e Margine (MOL)
-    # Nota: la resa è limitata dalla capacità biologica della pianta
-    resa_effettiva = 4.5 * min(c["risp_biochar"], ritenzione_idrica / 250)
-    mol = (resa_effettiva * c["prezzo"]) - costo_acqua_annuo - costo_op_netto
-    
-    data.append([anno, som, ritenzione_idrica, resa_effettiva, mol])
+    data.append([anno, som, ritenzione_idrica_ha, resa, mol_ha, ricavo_energia_ha])
 
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
+df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro', 'Ricavo_Energy'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
 col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
