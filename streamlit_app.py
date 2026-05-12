@@ -15,61 +15,57 @@ anni = 5
 som = 1.5
 data = []
 # --- BLOCCO 1: SCELTA DELLA COLTURA ---
-# --- 1. CONFIGURAZIONE DELLE COLTURE (Fabbisogni e Prezzi) ---
-coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium"])
+# --- 1. CONFIGURAZIONE INPUT AGGIUNTIVI E COLTURE ---
+st.sidebar.subheader("Approvvigionamento Biomassa")
+# Slider per prelevare biomassa dai boschi confinanti (ton/ha)
+biomassa_forestale = st.sidebar.slider("Biomassa da boschi confinanti (ton/ha)", 0, 50, 10)
+
+coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
 
 config = {
-    "Cereali Antichi": {
-        "prezzo": 120, 
-        "costo_base": 500, 
-        "risposta_biochar": 1.1,
-        "fabbisogno_irriguo_base": 400  # m3/ha (basso)
-    },
-    "Mandorle": {
-        "prezzo": 450, 
-        "costo_base": 1200, 
-        "risposta_biochar": 1.4,
-        "fabbisogno_irriguo_base": 1200 # m3/ha (alto)
-    },
-    "Orticole Premium": {
-        "prezzo": 350, 
-        "costo_base": 1500, 
-        "risposta_biochar": 1.6,
-        "fabbisogno_irriguo_base": 2500 # m3/ha (molto alto)
-    }
+    "Cereali Antichi": {"prezzo": 160, "costo_base": 500, "risp_biochar": 1.1, "fabbisogno_irr": 400, "residuo_biomassa": 5.0},
+    "Mandorle": {"prezzo": 450, "costo_base": 1200, "risp_biochar": 1.4, "fabbisogno_irr": 1200, "residuo_biomassa": 3.0},
+    "Orticole Premium": {"prezzo": 350, "costo_base": 1500, "risp_biochar": 1.6, "fabbisogno_irr": 2500, "residuo_biomassa": 1.5},
+    "Mix Biodiversità": {"prezzo": 280, "costo_base": 700, "risp_biochar": 1.3, "fabbisogno_irr": 600, "residuo_biomassa": 8.0}
 }
 c = config[coltura]
 
-# --- 2. LOGICA DI CALCOLO DINAMICA ---
+# --- 2. LOGICA DI AUTOPRODUZIONE E REALISMO ---
 data = []
 som = 1.5 
 for anno in range(1, 6):
-    som += 0.15
+    som += 0.15 # Incremento organico annuo (prudenziale per climi caldi)
     
-    # Stock idrico (la "spugna")
+    # Bilancio Biomassa: quanto ne produciamo noi + quanto ne prendiamo dal bosco
+    biomassa_totale_disponibile = c["residuo_biomassa"] + biomassa_forestale
+    
+    # Resa pirolisi (25%): ogni 4 ton di biomassa = 1 ton biochar
+    biochar_producibile_in_loco = biomassa_totale_disponibile / 4
+    
+    # Se l'utente vuole più biochar (biochar_input) di quello producibile, paga logistica esterna
+    # Se invece ne avanza, ipotizziamo un risparmio o vendita (qui semplificato a costo 0)
+    deficit_biochar = max(0, biochar_input - biochar_producibile_in_loco)
+    costo_logistica_esterna = deficit_biochar * 120 # 120€/t costo logistico realistico
+    
+    # Calcolo ritenzione e resa
     ritenzione_idrica = (som * 180) + (biochar_input * 3)
     
-    # RISPOSTA ALL'ACQUA: 
-    # Calcoliamo quanto dell'acqua necessaria viene coperta dalla "spugna"
-    # Più biochar metti, più abbatti il fabbisogno esterno
-    fabbisogno_esterno = max(100, c["fabbisogno_irriguo_base"] - (ritenzione_idrica * 1.8))
+    # Fabbisogno idrico che scende grazie alla spugna nel suolo
+    fabbisogno_esterno = max(100, c["fabbisogno_irr"] - (ritenzione_idrica * 1.5))
     costo_acqua_annuo = fabbisogno_esterno * costo_acqua
     
-    # Efficienza input (concimi)
-    risparmio_input = biochar_input * 12
-    costo_op_netto = c["costo_base"] - risparmio_input
+    # Efficienza input e risparmio chimica
+    risparmio_input = biochar_input * 15
+    costo_op_netto = c["costo_base"] + costo_logistica_esterna - risparmio_input
     
-    # Resa
-    resa = 4.5 * min(c["risposta_biochar"], ritenzione_idrica / 250)
+    # Calcolo Resa e Margine (MOL)
+    # Nota: la resa è limitata dalla capacità biologica della pianta
+    resa_effettiva = 4.5 * min(c["risp_biochar"], ritenzione_idrica / 250)
+    mol = (resa_effettiva * c["prezzo"]) - costo_acqua_annuo - costo_op_netto
     
-    # MOL
-    ricavi = resa * c["prezzo"]
-    mol = ricavi - costo_acqua_annuo - costo_op_netto
-    
-    data.append([anno, som, ritenzione_idrica, resa, mol])
+    data.append([anno, som, ritenzione_idrica, resa_effettiva, mol])
 
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
-st.subheader("Evoluzione Economica ed Ecologica")
+df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
 col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
 col2.metric("MOL Finale (€/ha)", f"{round(df['MOL_Euro'].iloc[-1], 0)}€")
