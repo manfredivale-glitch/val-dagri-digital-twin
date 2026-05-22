@@ -443,4 +443,3 @@ The objective is not maximizing peak yield,
 but stabilizing long-term biological and financial performance 
 under climate uncertainty.
 """)
-```
