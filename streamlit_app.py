@@ -39,11 +39,14 @@ st.title("🌱 Digital Twin: Progetto RAP - Val d'Agri")
 
 with st.sidebar:
     st.header("Parametri Progetto")
-    # Aggiunta la 'key' per evitare che i cursori scompaiano
+    
+    # Definiamo la lista prima del widget per essere sicuri che esista
+    opzioni_coltura = list(config_colture.keys())
+    
     biochar = st.slider("Biochar (ton/ha)", 0, 30, 10, key="bio")
     agrivoltaico = st.slider("Agrivoltaico (%)", 0, 100, 20, key="agri")
     costo_h2o = st.slider("Costo Acqua (€/m3)", 0.1, 1.0, 0.45, key="h2o")
-    coltura = st.selectbox("Coltura", list(config_colture.keys()), key="colt")
+    coltura = st.selectbox("Coltura", opzioni_coltura, key="colt", index=0)
 
 # --- 4. ANALISI E KPI ---
 params_rap = {'biochar': biochar, 'agrivoltaico': agrivoltaico, 'costo_h2o': costo_h2o, 'permacultura': 20}
