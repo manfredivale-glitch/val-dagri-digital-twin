@@ -48,19 +48,27 @@ with st.sidebar:
     costo_h2o = st.slider("Costo Acqua (€/m3)", 0.1, 1.0, 0.45, key="h2o")
     coltura = st.selectbox("Coltura", opzioni_coltura, key="colt", index=0)
 
-# --- 4. ANALISI E KPI ---
-params_rap = {'biochar': biochar, 'agrivoltaico': agrivoltaico, 'costo_h2o': costo_h2o, 'permacultura': 20}
-params_base = {'biochar': 0, 'agrivoltaico': 0, 'costo_h2o': costo_h2o, 'permacultura': 0}
+# --- 4. ANALISI E KPI (VERSIONE BLINDATA) ---
+try:
+    # Parametri con controllo di sicurezza
+    params_rap = {'biochar': biochar, 'agrivoltaico': agrivoltaico, 'costo_h2o': costo_h2o, 'permacultura': 20}
+    params_base = {'biochar': 0, 'agrivoltaico': 0, 'costo_h2o': costo_h2o, 'permacultura': 0}
 
-df_rap = calcola_scenario(params_rap, config_colture[coltura])
-df_base = calcola_scenario(params_base, config_colture[coltura])
+    # Calcolo scenari
+    df_rap = calcola_scenario(params_rap, config_colture[coltura])
+    df_base = calcola_scenario(params_base, config_colture[coltura])
 
-van_rap = calcola_van(df_rap['MOL_Euro'])
-van_base = calcola_van(df_base['MOL_Euro'])
+    # Calcolo VAN
+    van_rap = calcola_van(df_rap['MOL_Euro'])
+    van_base = calcola_van(df_base['MOL_Euro'])
 
-st.subheader("Confronto: Scenario RAP vs Standard")
-st.line_chart(pd.DataFrame({'RAP': df_rap['MOL_Euro'], 'Standard': df_base['MOL_Euro']}))
+    st.subheader("Confronto: Scenario RAP vs Standard")
+    st.line_chart(pd.DataFrame({'RAP': df_rap['MOL_Euro'], 'Standard': df_base['MOL_Euro']}))
 
-col1, col2 = st.columns(2)
-col1.metric("VAN Progetto RAP", f"{round(van_rap, 0)} €/ha")
-col2.metric("Valore Aggiunto (Delta VAN)", f"{round(van_rap - van_base, 0)} €/ha")
+    col1, col2 = st.columns(2)
+    col1.metric("VAN Progetto RAP", f"{round(van_rap, 0)} €/ha")
+    col2.metric("Valore Aggiunto (Delta VAN)", f"{round(van_rap - van_base, 0)} €/ha")
+
+except Exception as e:
+    st.error(f"Errore nel calcolo: {e}")
+    st.write("Controlla i valori in sidebar. Probabilmente qualche parametro sta portando a una divisione per zero o a un valore non valido.")
