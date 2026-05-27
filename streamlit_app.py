@@ -78,7 +78,6 @@ for anno in range(1, 6):
     prezzo_effettivo = c["prezzo"] * premium_factor * premium_factor_time
     mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
-
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
