@@ -72,8 +72,7 @@ for anno in range(1, 6):
     # G. Margine Operativo Lordo (MOL)
     premium_factor = prezzo_premium / 120
     prezzo_effettivo = c["prezzo"] * premium_factor
-    mol_ha = (resa * c["prezzo"]) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
-    
+    mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)    
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
