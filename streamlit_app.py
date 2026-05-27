@@ -37,8 +37,7 @@ c = config[coltura]
 data = []
 som = 1.5 
 for anno in range(1, 6):
-    som += 0.15
-    
+    som += 0.08 + (biochar_input * 0.003)    
     # A. Effetto Modulato Agrivoltaico (Ombra e Ricavi)
     riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
     ricavo_energia_ha = 2200 * (copertura_agrivoltaico / 100)
@@ -67,7 +66,8 @@ for anno in range(1, 6):
     costo_h2o_finale = max(0.05, costo_h2o_base - (energia_pirolisi / 10000))
     
     # F. Calcolo Resa (La variabile mancante!)
-    resa = 4.5 * min(c["risp_biochar"], ritenzione_idrica / 250)
+    fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
+    resa = 4.5 * (1 + fattore_suolo) * c["risp_biochar"]
     
     # G. Margine Operativo Lordo (MOL)
     mol_ha = (resa * c["prezzo"]) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
