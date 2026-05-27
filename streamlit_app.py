@@ -73,11 +73,22 @@ for anno in range(1, 6):
     premium_factor_time = 1 + (anno * 0.03)
     # Aggiungi queste definizioni prima del calcolo del MOL
     # Aggiungi un parametro "key" unico per ogni slider
-    premium_factor = st.sidebar.slider("Premium Factor (Prezzo)", 1.0, 2.0, 1.2, key="premium_factor_slider")
-    premium_factor_time = st.sidebar.slider("Premium Factor Time", 1.0, 1.5, 1.1, key="premium_time_slider")
+    # Chiave dinamica basata sul nome della coltura
+    premium_factor = st.sidebar.slider(
+        f"Premium Factor ({c['nome']})", 
+        1.0, 2.0, 1.2, 
+        key=f"premium_factor_{c['nome']}"
+    )
+    
+    premium_factor_time = st.sidebar.slider(
+        f"Premium Factor Time ({c['nome']})", 
+        1.0, 1.5, 1.1, 
+        key=f"premium_time_{c['nome']}"
+    )
     prezzo_effettivo = c["prezzo"] * premium_factor * premium_factor_time
     mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
+
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
