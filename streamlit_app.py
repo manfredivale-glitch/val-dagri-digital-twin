@@ -71,6 +71,9 @@ for anno in range(1, 6):
     
     # G. Margine Operativo Lordo (MOL)
     premium_factor_time = 1 + (anno * 0.03)
+    # Aggiungi queste definizioni prima del calcolo del MOL
+    premium_factor = st.sidebar.slider("Premium Factor (Prezzo)", 1.0, 2.0, 1.2)
+    premium_factor_time = st.sidebar.slider("Premium Factor Time", 1.0, 1.5, 1.1)
     prezzo_effettivo = c["prezzo"] * premium_factor * premium_factor_time
     mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
