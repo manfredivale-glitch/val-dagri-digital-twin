@@ -70,9 +70,8 @@ for anno in range(1, 6):
     resa = 4.5 * (1 + fattore_suolo) * c["risp_biochar"]
     
     # G. Margine Operativo Lordo (MOL)
-    premium_factor = prezzo_premium / 120
-    prezzo_effettivo = c["prezzo"] * premium_factor
-    mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)    
+    premium_factor_time = 1 + (anno * 0.03)
+    prezzo_effettivo = c["prezzo"] * premium_factor * premium_factor_time    mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)    
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
