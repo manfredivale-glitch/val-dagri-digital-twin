@@ -73,7 +73,7 @@ for anno in range(1, 6):
     premium_factor_time = 1 + (anno * 0.03)
     prezzo_effettivo = c["prezzo"] * premium_factor * premium_factor_time
     st.write("DEBUG prezzo:", prezzo_effettivo)
-    mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)    
+    mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
     st.write("DEBUG MOL:", mol_ha)
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
