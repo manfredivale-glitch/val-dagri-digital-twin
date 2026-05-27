@@ -70,6 +70,8 @@ for anno in range(1, 6):
     resa = 4.5 * (1 + fattore_suolo) * c["risp_biochar"]
     
     # G. Margine Operativo Lordo (MOL)
+    premium_factor = prezzo_premium / 120
+    prezzo_effettivo = c["prezzo"] * premium_factor
     mol_ha = (resa * c["prezzo"]) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
     
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
