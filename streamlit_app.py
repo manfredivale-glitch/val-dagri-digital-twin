@@ -96,12 +96,9 @@ for anno in range(1, 6):
     else:
         climate_multiplier = 1.0
     
-    remediation_gain = biochar_input * 0.015
-
-    contamination_factor = max(
-        0,
-        contamination_factor *= (1 - remediation_gain)
-
+    remediation_gain = min(0.2, biochar_input * 0.01)
+    contamination_factor = contamination_factor * (1 - remediation_gain)
+    contamination_factor = max(0, contamination_factor)
     soil_recovery_bonus = (1 - contamination_factor)
     som += 0.08 + (biochar_input * 0.003)    
     riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
@@ -140,7 +137,19 @@ for anno in range(1, 6):
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
-col1.metric("Resa Stimata (t/ha)", round(df['Resa_t'].iloc[-1], 2))
-col2.metric("MOL Finale (€/ha)", f"{round(df['MOL_Euro'].iloc[-1], 0)}€")
+if not df.empty:
 
+    col1.metric(
+        "Resa Stimata (t/ha)",
+        round(df['Resa_t'].iloc[-1], 2)
+    )
+
+    col2.metric(
+        "MOL Finale (€/ha)",
+        f"{round(df['MOL_Euro'].iloc[-1], 0)}€"
+    )
+
+else:
+    st.warning("Simulazione non disponibile: nessun dato generato.")
+    
 st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
