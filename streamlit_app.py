@@ -177,49 +177,79 @@ for anno in range(1, 6):
 # --- 3. OUTPUT ---
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
 
-st.subheader("Evoluzione Economica ed Ecologica")
+slide = st.sidebar.radio(
+    "Seleziona Slide",
+    [
+        "Context",
+        "Ecology",
+        "Yield",
+        "Finance",
+        "Energy Nexus",
+        "Investment Summary"
+    ]
+)
+
+st.subheader("📊 Investment Slide Engine")
 
 if len(df) > 0:
     last = df.iloc[-1]
 
-    st.subheader("📊 Investment View Layer")
+    if slide == "Context":
+        st.subheader("🌍 Project Context")
+        st.write({
+            "Scenario": scenario,
+            "Crop": coltura,
+            "Area (ha)": superficie_totale,
+            "Soil Type": soil_type
+        })
 
-    yield_kpi = last["Resa_t"]
-    margin_kpi = last["MOL_Euro"]
-    water_kpi = last["Water_m3"]
-    soil_kpi = last["SOM_%"]
+    elif slide == "Ecology":
+        st.subheader("🌱 Soil & Ecology Evolution")
+        st.line_chart(df.set_index("Anno")[["SOM_%"]])
+        st.line_chart(df.set_index("Anno")[["Water_m3"]])
 
-    avg_margin = df["MOL_Euro"].mean()
-    volatility = df["MOL_Euro"].std()
+    elif slide == "Yield":
+        st.subheader("🌾 Yield Trajectory")
+        st.line_chart(df.set_index("Anno")[["Resa_t"]])
 
-    investment_score = (
-        (avg_margin / 1000) * 0.4 +
-        (yield_kpi) * 0.3 +
-        (soil_kpi) * 0.2 -
-        (volatility / 500) * 0.1
-    )
+    elif slide == "Finance":
+        st.subheader("💰 Financial Trajectory")
+        st.line_chart(df.set_index("Anno")[["MOL_Euro"]])
 
-    col1, col2, col3 = st.columns(3)
+    elif slide == "Energy Nexus":
+        st.subheader("⚡ Energy & Nexus Effects")
+        st.write("Agrivoltaico + Biochar dynamics embedded in model")
+        st.line_chart(df.set_index("Anno")[["Water_m3", "MOL_Euro"]])
 
-    col1.metric("Yield (t/ha)", round(yield_kpi, 2))
-    col1.metric("Soil Health (SOM)", round(soil_kpi, 2))
+    elif slide == "Investment Summary":
 
-    col2.metric("Margin (€/ha)", f"{round(margin_kpi, 0)}€")
-    col2.metric("Avg Margin", f"{round(avg_margin, 0)}€")
+        st.subheader("📊 Investment Score")
 
-    col3.metric("Water Stress", round(water_kpi, 2))
-    col3.metric("Volatility", round(volatility, 0))
+        avg_margin = df["MOL_Euro"].mean()
+        volatility = df["MOL_Euro"].std()
 
-    st.metric("Investment Score", round(investment_score, 2))
+        investment_score = (
+            (avg_margin / 1000) * 0.4 +
+            (last["Resa_t"]) * 0.3 +
+            (last["SOM_%"]) * 0.2 -
+            (volatility / 500) * 0.1
+        )
 
-    if investment_score > 5:
-        st.success("🟢 High attractiveness")
-    elif investment_score > 3:
-        st.warning("🟡 Medium attractiveness")
-    else:
-        st.error("🔴 Low attractiveness")
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Yield", round(last["Resa_t"], 2))
+        col2.metric("Margin", f"{round(last['MOL_Euro'], 0)}€")
+        col3.metric("Soil", round(last["SOM_%"], 2))
+
+        st.metric("Investment Score", round(investment_score, 2))
+
+        if investment_score > 5:
+            st.success("🟢 High attractiveness")
+        elif investment_score > 3:
+            st.warning("🟡 Medium attractiveness")
+        else:
+            st.error("🔴 Low attractiveness")
 
 else:
-    st.warning("Simulazione non disponibile: nessun dato generato.")
-
+    st.warning("Simulazione non disponibile")
 st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
