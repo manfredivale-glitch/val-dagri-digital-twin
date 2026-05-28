@@ -72,6 +72,13 @@ st.sidebar.subheader("Dinamiche di Mercato")
 premium_factor = st.sidebar.slider(f"Premium Factor ({coltura})", 1.0, 2.0, 1.2)
 premium_factor_time = st.sidebar.slider(f"Premium Factor Time ({coltura})", 1.0, 1.5, 1.1)
 
+st.sidebar.subheader("Scenario di Investimento")
+
+scenario = st.sidebar.selectbox(
+    "Seleziona scenario",
+    ["Base Case", "Upside Case", "Downside Case"]
+)
+
 config = {
     "Cereali Antichi": {"prezzo": 160, "costo_base": 500, "risp_biochar": 1.1, "fabbisogno_irr": 400, "residuo_biomassa": 5.0},
     "Mandorle": {"prezzo": 450, "costo_base": 1200, "risp_biochar": 1.4, "fabbisogno_irr": 1200, "residuo_biomassa": 3.0},
@@ -79,7 +86,31 @@ config = {
     "Mix Biodiversità": {"prezzo": 280, "costo_base": 700, "risp_biochar": 1.3, "fabbisogno_irr": 600, "residuo_biomassa": 8.0}
 }
 c = config[coltura]
+scenario_config = {
+    "Base Case": {
+        "climate": 1.0,
+        "price": 1.0,
+        "price_trend": 1.0,
+        "remediation": 1.0,
+        "bad_bias": 0.33
+    },
+    "Upside Case": {
+        "climate": 1.1,
+        "price": 1.2,
+        "price_trend": 1.15,
+        "remediation": 1.2,
+        "bad_bias": 0.2
+    },
+    "Downside Case": {
+        "climate": 0.9,
+        "price": 0.85,
+        "price_trend": 0.9,
+        "remediation": 0.8,
+        "bad_bias": 0.5
+    }
+}
 
+sc = scenario_config[scenario]
 # --- 2. LOGICA DI CALCOLO DINAMICA ---
 data = []
 som = soil["som_init"]
@@ -87,18 +118,26 @@ contamination_factor = soil["contamination"]
 
 for anno in range(1, 6):
     
-    shock = random.choice(["good", "normal", "bad"])
+    shock_pool = (
+        ["good", "normal", "bad", "bad"] if sc["bad_bias"] > 0.4 else
+        ["good", "normal", "bad"] if sc["bad_bias"] > 0.25 else
+        ["good", "normal", "normal"]
+    )
 
-    if shock == "good":
-        climate_multiplier = 1.1
-    elif shock == "bad":
-        climate_multiplier = 0.8
-    else:
-        climate_multiplier = 1.0
-    
-    remediation_gain = min(0.2, biochar_input * 0.01)
+    shock = random.choice(shock_pool)
+
+    climate_multiplier = (
+        1.1 if shock == "good" else
+        0.8 if shock == "bad" else
+        1.0
+    )
+
+    climate_multiplier *= sc["climate"]
+
+    remediation_gain = min(0.2, biochar_input * 0.01) * sc["remediation"]
     contamination_factor = contamination_factor * (1 - remediation_gain)
     contamination_factor = max(0, contamination_factor)
+
     soil_recovery_bonus = (1 - contamination_factor)
     som += 0.08 + (biochar_input * 0.003)    
     riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
@@ -129,7 +168,13 @@ for anno in range(1, 6):
         * soil_recovery_bonus
         * climate_multiplier
     )
-    prezzo_effettivo = c["prezzo"] * premium_factor * (1 + (anno * (premium_factor_time - 1)))
+    prezzo_effettivo = (
+        c["prezzo"]
+        * premium_factor
+        * sc["price"]
+        * sc["price_trend"]   # 👈 AGGIUNTO
+        * (1 + (anno * (premium_factor_time - 1)))
+    )    
     mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
@@ -151,5 +196,13 @@ if not df.empty:
 
 else:
     st.warning("Simulazione non disponibile: nessun dato generato.")
-    
+
+st.subheader("Scenario Summary (Final Year)")
+
+st.write({
+    "Scenario": scenario,
+    "Final Resa (t/ha)": float(df['Resa_t'].iloc[-1]),
+    "Final MOL (€/ha)": float(df['MOL_Euro'].iloc[-1]),
+    "Final Water": float(df['Water_m3'].iloc[-1])
+})    
 st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
