@@ -176,43 +176,50 @@ for anno in range(1, 6):
 
 # --- 3. OUTPUT ---
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
+
 st.subheader("Evoluzione Economica ed Ecologica")
-col1, col2 = st.columns(2)
-last = df.iloc[-1] if len(df) > 0 else None
 
-if last is not None:
-    col1.metric("Resa Stimata (t/ha)", round(last["Resa_t"], 2))
-    col2.metric("MOL Finale (€/ha)", f"{round(last['MOL_Euro'], 0)}€")
+if len(df) > 0:
+    last = df.iloc[-1]
 
-    # ➕ NUOVA PARTE: WATER KPI (INVESTOR STYLE)
-    col3, col4 = st.columns(2)
+    st.subheader("📊 Investment View Layer")
 
-    col3.metric(
-        "Water Stress Index",
-        round(last["Water_m3"], 2)
+    yield_kpi = last["Resa_t"]
+    margin_kpi = last["MOL_Euro"]
+    water_kpi = last["Water_m3"]
+    soil_kpi = last["SOM_%"]
+
+    avg_margin = df["MOL_Euro"].mean()
+    volatility = df["MOL_Euro"].std()
+
+    investment_score = (
+        (avg_margin / 1000) * 0.4 +
+        (yield_kpi) * 0.3 +
+        (soil_kpi) * 0.2 -
+        (volatility / 500) * 0.1
     )
 
-    col4.metric(
-        "Soil Organic Trend (SOM)",
-        round(last["SOM_%"], 2)
-    )
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("Yield (t/ha)", round(yield_kpi, 2))
+    col1.metric("Soil Health (SOM)", round(soil_kpi, 2))
+
+    col2.metric("Margin (€/ha)", f"{round(margin_kpi, 0)}€")
+    col2.metric("Avg Margin", f"{round(avg_margin, 0)}€")
+
+    col3.metric("Water Stress", round(water_kpi, 2))
+    col3.metric("Volatility", round(volatility, 0))
+
+    st.metric("Investment Score", round(investment_score, 2))
+
+    if investment_score > 5:
+        st.success("🟢 High attractiveness")
+    elif investment_score > 3:
+        st.warning("🟡 Medium attractiveness")
+    else:
+        st.error("🔴 Low attractiveness")
 
 else:
     st.warning("Simulazione non disponibile: nessun dato generato.")
-st.subheader("Scenario Summary (Final Year)")
 
-st.subheader("Investor Snapshot")
-
-st.json({
-    "scenario": scenario,
-    "final_year": int(last["Anno"]) if last is not None else None,
-    "agri_performance": {
-        "yield": float(last["Resa_t"]),
-        "soil_health": float(last["SOM_%"])
-    },
-    "financial_performance": {
-        "margin": float(last["MOL_Euro"]),
-        "water_intensity": float(last["Water_m3"])
-    }
-})
 st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
