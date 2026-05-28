@@ -118,14 +118,14 @@ contamination_factor = soil["contamination"]
 
 for anno in range(1, 6):
     
-    shock_pool = (
-        ["good", "normal", "bad", "bad"] if sc["bad_bias"] > 0.4 else
-        ["good", "normal", "bad"] if sc["bad_bias"] > 0.25 else
-        ["good", "normal", "normal"]
-    )
+    r = random.random()
 
-    shock = random.choice(shock_pool)
-
+    if r < sc["bad_bias"]:
+        shock = "bad"
+    elif r < sc["bad_bias"] + 0.3:
+        shock = "normal"
+    else:
+        shock = "good"
     climate_multiplier = (
         1.1 if shock == "good" else
         0.8 if shock == "bad" else
@@ -133,7 +133,6 @@ for anno in range(1, 6):
     )
 
     climate_multiplier *= sc["climate"]
-
     remediation_gain = min(0.2, biochar_input * 0.01) * sc["remediation"]
     contamination_factor = contamination_factor * (1 - remediation_gain)
     contamination_factor = max(0, contamination_factor)
@@ -168,13 +167,10 @@ for anno in range(1, 6):
         * soil_recovery_bonus
         * climate_multiplier
     )
-    prezzo_effettivo = (
-        c["prezzo"]
-        * premium_factor
-        * sc["price"]
-        * sc["price_trend"]   # 👈 AGGIUNTO
-        * (1 + (anno * (premium_factor_time - 1)))
-    )    
+    market_multiplier = sc["price"] * premium_factor
+    time_multiplier = 1 + (premium_factor_time - 1) * (anno - 1)
+
+    prezzo_effettivo = c["prezzo"] * market_multiplier * time_multiplier
     mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
@@ -182,27 +178,41 @@ for anno in range(1, 6):
 df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
 st.subheader("Evoluzione Economica ed Ecologica")
 col1, col2 = st.columns(2)
-if not df.empty:
+last = df.iloc[-1] if len(df) > 0 else None
 
-    col1.metric(
-        "Resa Stimata (t/ha)",
-        round(df['Resa_t'].iloc[-1], 2)
+if last is not None:
+    col1.metric("Resa Stimata (t/ha)", round(last["Resa_t"], 2))
+    col2.metric("MOL Finale (€/ha)", f"{round(last['MOL_Euro'], 0)}€")
+
+    # ➕ NUOVA PARTE: WATER KPI (INVESTOR STYLE)
+    col3, col4 = st.columns(2)
+
+    col3.metric(
+        "Water Stress Index",
+        round(last["Water_m3"], 2)
     )
 
-    col2.metric(
-        "MOL Finale (€/ha)",
-        f"{round(df['MOL_Euro'].iloc[-1], 0)}€"
+    col4.metric(
+        "Soil Organic Trend (SOM)",
+        round(last["SOM_%"], 2)
     )
 
 else:
     st.warning("Simulazione non disponibile: nessun dato generato.")
-
 st.subheader("Scenario Summary (Final Year)")
 
-st.write({
-    "Scenario": scenario,
-    "Final Resa (t/ha)": float(df['Resa_t'].iloc[-1]),
-    "Final MOL (€/ha)": float(df['MOL_Euro'].iloc[-1]),
-    "Final Water": float(df['Water_m3'].iloc[-1])
-})    
+st.subheader("Investor Snapshot")
+
+st.json({
+    "scenario": scenario,
+    "final_year": int(last["Anno"]) if last is not None else None,
+    "agri_performance": {
+        "yield": float(last["Resa_t"]),
+        "soil_health": float(last["SOM_%"])
+    },
+    "financial_performance": {
+        "margin": float(last["MOL_Euro"]),
+        "water_intensity": float(last["Water_m3"])
+    }
+})
 st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
