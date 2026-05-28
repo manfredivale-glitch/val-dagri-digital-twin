@@ -1,11 +1,60 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import random
 
 st.title("🌱 Val d’Agri Digital Twin - Biodiversity Factory")
 st.sidebar.header("Parametri di Simulazione")
 
 # --- 1. CONFIGURAZIONE AVANZATA (SIDEBAR) ---
+st.sidebar.subheader("Tipologia Pedologica")
+
+soil_type = st.sidebar.selectbox(
+    "Tipo di suolo",
+    [
+        "Sandy Degraded",
+        "Clay Agricultural",
+        "Mediterranean Calcareous",
+        "Organic High Carbon",
+        "Contaminated Brownfield"
+    ]
+)
+
+soil_config = {
+    "Sandy Degraded": {
+        "som_init": 0.8,
+        "water_factor": 0.6,
+        "fertility_factor": 0.7,
+        "contamination": 0.1
+    },
+    "Clay Agricultural": {
+        "som_init": 1.5,
+        "water_factor": 1.0,
+        "fertility_factor": 1.0,
+        "contamination": 0.0
+    },
+    "Mediterranean Calcareous": {
+        "som_init": 1.2,
+        "water_factor": 0.8,
+        "fertility_factor": 0.9,
+        "contamination": 0.0
+    },
+    "Organic High Carbon": {
+        "som_init": 2.8,
+        "water_factor": 1.4,
+        "fertility_factor": 1.3,
+        "contamination": 0.0
+    },
+    "Contaminated Brownfield": {
+        "som_init": 0.9,
+        "water_factor": 0.7,
+        "fertility_factor": 0.5,
+        "contamination": 0.8
+    }
+}
+
+soil = soil_config[soil_type]
+
 st.sidebar.header("Parametri di Scala e Ottimizzazione")
 biochar_input = st.sidebar.slider("Biochar aggiunto (ton/ha)", 0, 30, 10)
 costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
@@ -33,8 +82,27 @@ c = config[coltura]
 
 # --- 2. LOGICA DI CALCOLO DINAMICA ---
 data = []
-som = 1.5 
+som = soil["som_init"]
+contamination_factor = soil["contamination"]
+
 for anno in range(1, 6):
+    
+    shock = random.choice(["good", "normal", "bad"])
+
+    if shock == "good":
+        climate_multiplier = 1.1
+    elif shock == "bad":
+        climate_multiplier = 0.8
+    else:
+        climate_multiplier = 1.0
+    
+    remediation_gain = biochar_input * 0.015
+
+    contamination_factor = max(
+        0,
+        contamination_factor *= (1 - remediation_gain)
+
+    soil_recovery_bonus = (1 - contamination_factor)
     som += 0.08 + (biochar_input * 0.003)    
     riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
     ricavo_energia_ha = 2200 * (copertura_agrivoltaico / 100)
@@ -56,8 +124,14 @@ for anno in range(1, 6):
     costo_h2o_finale = max(0.05, costo_h2o_base - (energia_pirolisi / 10000))
     
     fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
-    resa = 4.5 * (1 + fattore_suolo) * c["risp_biochar"]
-    
+    resa = (
+        4.5
+        * (1 + fattore_suolo)
+        * c["risp_biochar"]
+        * soil["fertility_factor"]
+        * soil_recovery_bonus
+        * climate_multiplier
+    )
     prezzo_effettivo = c["prezzo"] * premium_factor * (1 + (anno * (premium_factor_time - 1)))
     mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
