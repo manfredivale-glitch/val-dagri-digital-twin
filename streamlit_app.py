@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import random
 
-st.title("🌱 Val d’Agri Digital Twin - Biodiversity Factory")
+st.title("Val d’Agri Digital Twin - Regenerative Asset Platform RAP")
 st.sidebar.header("Parametri di Simulazione")
 
 # --- 1. CONFIGURAZIONE AVANZATA (SIDEBAR) ---
