@@ -258,16 +258,21 @@ st.subheader("📊 Investment Slide Engine")
 
 if len(df) > 0:
     last = df.iloc[-1]
-
+    
     if slide == "Context":
-        st.subheader("🌍 Project Context")
-        st.write({
-            "Scenario": scenario,
-            "Crop": coltura,
-            "Area (ha)": superficie_totale,
-            "Soil Type": soil_type
-        })
-
+    
+        st.subheader("Project Context")
+    
+        col1, col2 = st.columns(2)
+    
+        with col1:
+            st.metric("Scenario", scenario)
+            st.metric("Crop", coltura)
+    
+        with col2:
+            st.metric("Area (ha)", superficie_totale)
+            st.metric("Soil Type", soil_type)
+        
     elif slide == "Ecology":
 
         st.subheader("🌱 Soil System Evolution")
