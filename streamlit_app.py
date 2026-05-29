@@ -338,10 +338,10 @@ if len(df) > 0:
         st.metric("Investment Score", round(investment_score, 2))
     
         if investment_score > 5:
-            st.success("High attractiveness")
+            st.success("🟢 High attractiveness")
         elif investment_score > 3:
-            st.warning("Medium attractiveness")
+            st.warning("🟡 Medium attractiveness")
         else:
-            st.error("Low attractiveness")
+            st.error("🔴 Low attractiveness")
 else:
     st.warning("Simulazione non disponibile")
