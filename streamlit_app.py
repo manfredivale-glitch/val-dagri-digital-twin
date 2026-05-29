@@ -184,7 +184,8 @@ def run_simulation(sc):
 
         biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
 
-        costo_log_unitario = 150 * (0.8 ** (superficie_totale / 500))
+        economy_of_scale = min(1.0, superficie_totale / 2000)
+        costo_log_unitario = 150 * (1 - 0.6 * economy_of_scale)
 
         deficit = max(0, biochar_input - biochar_auto)
 
