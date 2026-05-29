@@ -63,7 +63,11 @@ biomassa_forestale = st.sidebar.slider("Biomassa dai boschi (ton/ha)", 0, 50, 10
 
 st.sidebar.subheader("Nexus Energetico")
 copertura_agrivoltaico = st.sidebar.slider("Copertura Agrivoltaico (%)", 0, 100, 0)
-efficienza_permacultura = st.sidebar.slider("Efficienza Permacultura (%)", 0, 100, 20)
+st.sidebar.subheader("Regenerative Water System")
+
+water_retention = st.sidebar.slider("Water Retention Capacity", 0, 100, 30)
+evap_reduction = st.sidebar.slider("Evaporation Reduction", 0, 100, 20)
+agro_stability = st.sidebar.slider("Agroecological Stability", 0, 100, 25)
 
 coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
 
@@ -155,14 +159,27 @@ def run_simulation(sc):
 
         fabbisogno_base = c["fabbisogno_irr"] * riduzione_evap
 
-        risparmio_perm = fabbisogno_base * (efficienza_permacultura / 100)
+    risk_water_volatility = (1 - agro_stability / 100)
 
-        fabbisogno_est = max(
-            50,
-            fabbisogno_base - (ritenzione_idrica * 1.5) - risparmio_perm
-        )
+    climate_sensitivity = risk_water_volatility * (1 - water_retention / 100)
 
-        biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
+    water_saving_factor = (
+        (water_retention * 0.4) +
+        (evap_reduction * 0.4) +
+        (agro_stability * 0.2)
+    ) / 100
+
+    risparmio_perm = fabbisogno_base * water_saving_factor
+
+
+    fabbisogno_est = max(
+        50,
+        fabbisogno_base
+        - (ritenzione_idrica * 1.5)
+        - risparmio_perm
+    )
+
+fabbisogno_est *= (1 + climate_sensitivity)        biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
 
         deficit = max(0, biochar_input - biochar_auto)
 
