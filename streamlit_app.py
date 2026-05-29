@@ -258,21 +258,30 @@ st.subheader("📊 Investment Slide Engine")
 
 if len(df) > 0:
     last = df.iloc[-1]
-    
+        
     if slide == "Context":
     
-        st.subheader("Project Context")
+        st.subheader("Project Overview")
     
-        col1, col2 = st.columns(2)
+        col1, col2, col3, col4 = st.columns(4)
     
-        with col1:
-            st.metric("Scenario", scenario)
-            st.metric("Crop", coltura)
+        col1.metric("Scenario", scenario)
+        col2.metric("Crop", coltura)
+        col3.metric("Area (ha)", superficie_totale)
+        col4.metric("Soil", soil_type)
     
-        with col2:
-            st.metric("Area (ha)", superficie_totale)
-            st.metric("Soil Type", soil_type)
-        
+        st.markdown("---")
+    
+        st.write(
+            f"""
+            Project configured on **{superficie_totale} ha**
+            using **{soil_type}** soils under a
+            **{scenario}** scenario.
+            Target production system:
+            **{coltura}**.
+            """
+        )
+    
     elif slide == "Ecology":
 
         st.subheader("🌱 Soil System Evolution")
