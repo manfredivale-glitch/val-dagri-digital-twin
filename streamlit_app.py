@@ -336,7 +336,7 @@ if len(df) > 0:
         col2.metric("Water Stock", f"{last['Water_m3']:.1f}")
         col3.metric("Water Stress Index", f"{last['Water_Stress']:.2f}")
 
-        st.line_chart(df.set_index("Anno")[["Water_m3", "Water_Stress"]])
+        st.line_chart(df.set_index("Anno")[["SOM_%", "Water_m3", "Water_Stress"]])
     
     elif slide == "Yield":
         st.subheader("Yield Trajectory")
