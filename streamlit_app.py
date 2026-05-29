@@ -332,9 +332,11 @@ if len(df) > 0:
 
         col1, col2, col3 = st.columns(3)
         
-        col1.metric("Soil Organic Matter", f"{last['SOM_%']:.2f}")
-        col2.metric("Water Stock", f"{last['Water_m3']:.1f}")
-        col3.metric("Water Stress Index", f"{last['Water_Stress']:.2f}")
+        col1.metric("Soil Organic Matter", f"{last['SOM_%']:.2f} %")
+        
+        col2.metric("Water Stock", f"{last['Water_m3']:.1f} index")
+        
+        col3.metric("Water Stress", f"{last['Water_Stress']:.2f} (0–1)")
 
         st.line_chart(df.set_index("Anno")[["SOM_%", "Water_m3", "Water_Stress"]])
     
