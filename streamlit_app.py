@@ -317,34 +317,35 @@ if len(df) > 0:
 
     elif slide == "Investment Summary":
         
-            st.subheader("📊 Investment Score")
+        st.subheader("📊 Investment Score")
 
-            avg_margin = df["MOL_Euro"].mean()
-            volatility = df["MOL_Euro"].std()
+        avg_margin = df["MOL_Euro"].mean()
+        volatility = df["MOL_Euro"].std()
 
-            investment_score = (
-                (avg_margin / 1000) * 0.4 +
-                (last["Resa_t"]) * 0.3 +
-                (last["SOM_%"]) * 0.2 -
-                (volatility / 500) * 0.1
-            )
+        investment_score = (
+            (avg_margin / 1000) * 0.4 +
+            (last["Resa_t"]) * 0.3 +
+            (last["SOM_%"]) * 0.2 -
+            (volatility / 500) * 0.1
+        )
 
-            col1, col2, col3 = st.columns(3)
+        col1, col2, col3 = st.columns(3)
 
-            col1.metric("Yield", round(last["Resa_t"], 2))
-            col2.metric("Margin", f"{round(last['MOL_Euro'], 0)}€")
-            col3.metric("Soil", round(last["SOM_%"], 2))
+        col1.metric("Yield", round(last["Resa_t"], 2))
+        col2.metric("Margin", f"{round(last['MOL_Euro'], 0)}€")
+        col3.metric("Soil", round(last["SOM_%"], 2))
 
-            st.metric("Investment Score", round(investment_score, 2))
+        st.metric("Investment Score", round(investment_score, 2))
 
-            if investment_score > 5:
-                st.success("🟢 High attractiveness")
-            elif investment_score > 3:
-                st.warning("🟡 Medium attractiveness")
-            else:
-                st.error("🔴 Low attractiveness")
+        if investment_score > 5:
+            st.success("🟢 High attractiveness")
+        elif investment_score > 3:
+            st.warning("🟡 Medium attractiveness")
+        else:
+            st.error("🔴 Low attractiveness")
 
 else:
     st.warning("Simulazione non disponibile")
+
 if len(df) > 0:
     st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
