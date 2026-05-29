@@ -170,17 +170,46 @@ def run_simulation(sc):
         contamination_factor = min(max(contamination_factor, 0), 1)
 
         soil_recovery_bonus = (1 - contamination_factor)
-
-        # -----------------------------
-        # 4. WATER SYSTEM
-        # -----------------------------
-        water_capacity = soil["water_factor"] * 100
         
-        infiltration = 0.3 + (som * 0.05)
-        losses = 0.6 - (som * 0.03)
+        # ============================
+        # 🌊 WATER SYSTEM (PHYSICAL BALANCE)
+        # ============================
         
-        water_stock = water_capacity * infiltration * losses
-        water_stock = max(5, water_stock)
+        # 1. WATER INPUT (pioggia + suolo + resilienza)
+        base_precipitation = 80 * soil["water_factor"]
+        
+        soil_absorption = 0.3 + (som * 0.06) + (biomassa_forestale * 0.002)
+        
+        water_input = base_precipitation * soil_absorption
+        
+        
+        # 2. EVAPORATION LOSS (clima + gestione)
+        climate_evap_stress = 0.4 * (1 - sc["climate"] * 0.1)
+        
+        management_loss = 0.3 * (1 - evap_reduction / 100)
+        
+        evaporation_loss = 60 * (climate_evap_stress + management_loss)
+        
+        
+        # 3. AGRICULTURAL CONSUMPTION
+        crop_demand_factor = c["fabbisogno_irr"] / 1000
+        agricultural_use = 40 * crop_demand_factor
+        
+        
+        # 4. BUFFER EFFECT (biochar + SOM = ritenzione)
+        retention_buffer = (som * 5) + (biochar_input * 2.5)
+        
+        
+        # 5. FINAL WATER STOCK (bounded system)
+        water_stock = (
+            water_input
+            - evaporation_loss
+            - agricultural_use
+            + retention_buffer
+        )
+        
+        # stabilizzazione (mai collasso a zero immediato)
+        water_stock = max(10, water_stock)
 
         # -----------------------------
         # 5. SOIL HEALTH INDEX
