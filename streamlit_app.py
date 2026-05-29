@@ -123,103 +123,109 @@ def run_simulation(sc):
     som = soil["som_init"]
     contamination_factor = soil["contamination"]
 
-    for anno in range(1, 6):
+for anno in range(1, 6):
 
-        shock_pool = (
-            ["good", "normal", "bad", "bad"] if sc["bad_bias"] > 0.4 else
-            ["good", "normal", "bad"] if sc["bad_bias"] > 0.25 else
-            ["good", "normal", "normal"]
-        )
+    # -----------------------------
+    # 1. SHOCK CLIMATICO
+    # -----------------------------
+    shock_pool = (
+        ["good", "normal", "bad", "bad"] if sc["bad_bias"] > 0.4 else
+        ["good", "normal", "bad"] if sc["bad_bias"] > 0.25 else
+        ["good", "normal", "normal"]
+    )
 
-        shock = random.choice(shock_pool)
+    shock = random.choice(shock_pool)
 
-        climate_multiplier = (
-            1.1 if shock == "good" else
-            0.8 if shock == "bad" else
-            1.0
-        )
+    climate_multiplier = (
+        1.1 if shock == "good" else
+        0.8 if shock == "bad" else
+        1.0
+    ) * sc["climate"]
 
-        climate_multiplier *= sc["climate"]
+    # -----------------------------
+    # 2. SOM (STOCK VIVO)
+    # -----------------------------
+    som += (
+        biochar_input * 0.02 +
+        biomassa_forestale * 0.01 -
+        som * 0.01
+    )
+    som = max(0, som)
 
-        remediation_gain = min(0.2, biochar_input * 0.01) * sc["remediation"]
-        contamination_factor = contamination_factor * (1 - remediation_gain)
-        contamination_factor = max(0, contamination_factor)
+    # -----------------------------
+    # 3. CONTAMINATION (STOCK)
+    # -----------------------------
+    remediation_effect = (
+        biochar_input * 0.01 +
+        som * 0.002
+    )
 
-        soil_recovery_bonus = (1 - contamination_factor)
+    contamination_factor += (
+        sc["bad_bias"] * 0.02
+        - remediation_effect
+    )
 
-        som += 0.08 + (biochar_input * 0.003)
+    contamination_factor = min(max(contamination_factor, 0), 1)
 
-        riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
+    soil_recovery_bonus = (1 - contamination_factor)
 
-        ricavo_energia_ha = 2200 * (copertura_agrivoltaico / 100)
+    # -----------------------------
+    # 4. WATER STOCK (DINAMICO)
+    # -----------------------------
+    water_inflow = soil["water_factor"] * 50
+    water_loss = (1 - som * 0.02) * 40
 
-        bonus_rigenerazione = max(0, 500 * (1 - copertura_agrivoltaico / 100)) if biochar_input > 15 else 0
+    water_stock = water_inflow - water_loss
+    water_stock = max(0, water_stock)
 
-        costo_h2o_base = costo_acqua * (3.0 if costo_acqua > 0.5 else 1.0)
+    # -----------------------------
+    # 5. SOIL HEALTH (INDICE EMERGENTE)
+    # -----------------------------
+    soil_health = (
+        som * 0.4 +
+        (water_stock / 100) * 0.4 +
+        (1 - contamination_factor) * 0.2
+    )
 
-        ritenzione_idrica = (som * 180) + (biochar_input * 3)
+    # -----------------------------
+    # 6. YIELD
+    # -----------------------------
+    resa = (
+        4.5 *
+        soil_health *
+        c["risp_biochar"] *
+        climate_multiplier
+    )
 
-        fabbisogno_base = c["fabbisogno_irr"] * riduzione_evap
+    # -----------------------------
+    # 7. ECONOMIA
+    # -----------------------------
+    price_trend = 1 + (premium_factor_time - 1) * (anno - 1)
 
-        water_saving_factor = (
-            (water_retention * 0.4) +
-            (evap_reduction * 0.4) +
-            (agro_stability * 0.2)
-        ) / 100
+    prezzo_effettivo = (
+        c["prezzo"] *
+        sc["price"] *
+        premium_factor *
+        price_trend
+    )
 
-        risparmio_perm = fabbisogno_base * water_saving_factor
+    costi = c["costo_base"]
 
-        risk_water_volatility = (1 - agro_stability / 100)
+    mol_ha = (
+        resa * prezzo_effettivo
+        - costi
+    )
 
-        climate_sensitivity = risk_water_volatility * (1 - water_retention / 100)
-
-        fabbisogno_est = max(
-            50,
-            fabbisogno_base
-            - (ritenzione_idrica * 1.5)
-            - risparmio_perm
-        )
-
-        fabbisogno_est *= (1 + climate_sensitivity)        
-
-        biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
-
-        economy_of_scale = min(1.0, superficie_totale / 2000)
-        costo_log_unitario = 150 * (1 - 0.6 * economy_of_scale)
-
-        deficit = max(0, biochar_input - biochar_auto)
-
-        costo_logistica = deficit * costo_log_unitario
-
-        energia_pirolisi = (biochar_auto * superficie_totale) * 2
-
-        costo_h2o_finale = max(0.05, costo_h2o_base - (energia_pirolisi / 10000))
-
-        fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
-
-        resa = (
-            4.5
-            * (1 + fattore_suolo)
-            * c["risp_biochar"]
-            * soil["fertility_factor"]
-            * soil_recovery_bonus
-            * climate_multiplier
-        )
-
-        market_multiplier = sc["price"] * premium_factor
-        time_multiplier = 1 + (premium_factor_time - 1) * (anno - 1)
-    
-        prezzo_effettivo = (c["prezzo"] * market_multiplier * time_multiplier)
-
-        mol_ha = (
-            (resa * prezzo_effettivo)
-            - c["costo_base"]
-            - costo_logistica
-            - (fabbisogno_est * costo_h2o_finale)
-        )
-
-        data.append([anno, som, ritenzione_idrica, resa, mol_ha])
-
+    # -----------------------------
+    # 8. STORE
+    # -----------------------------
+    data.append([
+        anno,
+        som,
+        water_stock,
+        resa,
+        mol_ha
+    ])
     return pd.DataFrame(
         data,
         columns=[
