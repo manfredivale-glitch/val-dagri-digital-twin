@@ -112,70 +112,129 @@ scenario_config = {
 
 sc = scenario_config[scenario]
 # --- 2. LOGICA DI CALCOLO DINAMICA ---
-data = []
-som = soil["som_init"]
-contamination_factor = soil["contamination"]
 
-for anno in range(1, 6):
-    
-    r = random.random()
+def run_simulation(sc):
 
-    if r < sc["bad_bias"]:
-        shock = "bad"
-    elif r < sc["bad_bias"] + 0.3:
-        shock = "normal"
-    else:
-        shock = "good"
-    climate_multiplier = (
-        1.1 if shock == "good" else
-        0.8 if shock == "bad" else
-        1.0
+    data = []
+    som = soil["som_init"]
+    contamination_factor = soil["contamination"]
+
+    for anno in range(1, 6):
+
+        shock_pool = (
+            ["good", "normal", "bad", "bad"] if sc["bad_bias"] > 0.4 else
+            ["good", "normal", "bad"] if sc["bad_bias"] > 0.25 else
+            ["good", "normal", "normal"]
+        )
+
+        shock = random.choice(shock_pool)
+
+        climate_multiplier = (
+            1.1 if shock == "good" else
+            0.8 if shock == "bad" else
+            1.0
+        )
+
+        climate_multiplier *= sc["climate"]
+
+        remediation_gain = min(0.2, biochar_input * 0.01) * sc["remediation"]
+
+        contamination_factor = contamination_factor * (1 - remediation_gain)
+
+        contamination_factor = max(0, contamination_factor)
+
+        soil_recovery_bonus = (1 - contamination_factor)
+
+        som += 0.08 + (biochar_input * 0.003)
+
+        riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
+
+        costo_h2o_base = costo_acqua * (3.0 if costo_acqua > 0.5 else 1.0)
+
+        ritenzione_idrica = (som * 180) + (biochar_input * 3)
+
+        fabbisogno_base = c["fabbisogno_irr"] * riduzione_evap
+
+        risparmio_perm = fabbisogno_base * (efficienza_permacultura / 100)
+
+        fabbisogno_est = max(
+            50,
+            fabbisogno_base - (ritenzione_idrica * 1.5) - risparmio_perm
+        )
+
+        biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
+
+        deficit = max(0, biochar_input - biochar_auto)
+
+        costo_logistica = deficit * 150
+
+        energia_pirolisi = (biochar_auto * superficie_totale) * 2
+
+        costo_h2o_finale = max(
+            0.05,
+            costo_h2o_base - (energia_pirolisi / 10000)
+        )
+
+        fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
+
+        resa = (
+            4.5
+            * (1 + fattore_suolo)
+            * c["risp_biochar"]
+            * soil["fertility_factor"]
+            * soil_recovery_bonus
+            * climate_multiplier
+        )
+
+        market_multiplier = sc["price"] * premium_factor
+
+        time_multiplier = 1 + (
+            (premium_factor_time - 1) * (anno - 1)
+        )
+
+        prezzo_effettivo = (
+            c["prezzo"]
+            * market_multiplier
+            * time_multiplier
+        )
+
+        mol_ha = (
+            (resa * prezzo_effettivo)
+            - c["costo_base"]
+            - costo_logistica
+            - (fabbisogno_est * costo_h2o_finale)
+        )
+
+        data.append([
+            anno,
+            som,
+            ritenzione_idrica,
+            resa,
+            mol_ha
+        ])
+
+    return pd.DataFrame(
+        data,
+        columns=[
+            'Anno',
+            'SOM_%',
+            'Water_m3',
+            'Resa_t',
+            'MOL_Euro'
+        ]
     )
-
-    climate_multiplier *= sc["climate"]
-    remediation_gain = min(0.2, biochar_input * 0.01) * sc["remediation"]
-    contamination_factor = contamination_factor * (1 - remediation_gain)
-    contamination_factor = max(0, contamination_factor)
-
-    soil_recovery_bonus = (1 - contamination_factor)
-    som += 0.08 + (biochar_input * 0.003)    
-    riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
-    ricavo_energia_ha = 2200 * (copertura_agrivoltaico / 100)
-    bonus_rigenerazione = max(0, 500 * (1 - copertura_agrivoltaico/100)) if biochar_input > 15 else 0
-    
-    costo_h2o_base = costo_acqua * (3.0 if costo_acqua > 0.5 else 1.0)
-    ritenzione_idrica = (som * 180) + (biochar_input * 3)
-    fabbisogno_base = c["fabbisogno_irr"] * riduzione_evap
-    
-    risparmio_perm = fabbisogno_base * (efficienza_permacultura / 100)
-    fabbisogno_est = max(50, fabbisogno_base - (ritenzione_idrica * 1.5) - risparmio_perm)
-    
-    biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
-    costo_log_unitario = 150 * (0.8 ** (superficie_totale / 500))
-    deficit = max(0, biochar_input - biochar_auto)
-    costo_logistica = deficit * costo_log_unitario
-    
-    energia_pirolisi = (biochar_auto * superficie_totale) * 2
-    costo_h2o_finale = max(0.05, costo_h2o_base - (energia_pirolisi / 10000))
-    
-    fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
-    resa = (
-        4.5
-        * (1 + fattore_suolo)
-        * c["risp_biochar"]
-        * soil["fertility_factor"]
-        * soil_recovery_bonus
-        * climate_multiplier
-    )
-    market_multiplier = sc["price"] * premium_factor
-    time_multiplier = 1 + (premium_factor_time - 1) * (anno - 1)
-
-    prezzo_effettivo = c["prezzo"] * market_multiplier * time_multiplier
-    mol_ha = (resa * prezzo_effettivo) + ricavo_energia_ha + bonus_rigenerazione - c["costo_base"] - costo_logistica - (fabbisogno_est * costo_h2o_finale)
-    data.append([anno, som, ritenzione_idrica, resa, mol_ha])
-
 # --- 3. OUTPUT ---
-df = pd.DataFrame(data, columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro'])
+df_base = run_simulation(scenario_config["Base Case"])
+
+df_up = run_simulation(scenario_config["Upside Case"])
+
+df_down = run_simulation(scenario_config["Downside Case"])
+
+df = {
+    "Base Case": df_base,
+    "Upside Case": df_up,
+    "Downside Case": df_down
+}[scenario]
 
 slide = st.sidebar.radio(
     "Seleziona Slide",
@@ -220,6 +279,32 @@ if len(df) > 0:
         st.subheader("⚡ Energy & Nexus Effects")
         st.write("Agrivoltaico + Biochar dynamics embedded in model")
         st.line_chart(df.set_index("Anno")[["Water_m3", "MOL_Euro"]])
+        st.subheader("📊 Multi-Scenario Comparison")
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric(
+    "Base Case MOL",
+    f"{round(df_base['MOL_Euro'].iloc[-1], 0)}€"
+)
+
+col2.metric(
+    "Upside Case MOL",
+    f"{round(df_up['MOL_Euro'].iloc[-1], 0)}€"
+)
+
+col3.metric(
+    "Downside Case MOL",
+    f"{round(df_down['MOL_Euro'].iloc[-1], 0)}€"
+)
+
+comparison_df = pd.DataFrame({
+    "Base": df_base.set_index("Anno")["MOL_Euro"],
+    "Upside": df_up.set_index("Anno")["MOL_Euro"],
+    "Downside": df_down.set_index("Anno")["MOL_Euro"]
+})
+
+st.line_chart(comparison_df)
 
     elif slide == "Investment Summary":
 
