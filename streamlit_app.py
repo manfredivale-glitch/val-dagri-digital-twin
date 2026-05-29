@@ -262,7 +262,14 @@ def run_simulation(sc):
         ])
     return pd.DataFrame(
         data,
-        columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro']
+        columns=[
+            'Anno',
+            'SOM_%',
+            'Water_m3',
+            'Resa_t',
+            'MOL_Euro',
+            'Water_Stress'
+        ]
     )
     
 # --- 3. OUTPUT ---
@@ -323,12 +330,13 @@ if len(df) > 0:
 
         st.subheader("Soil System Evolution")
 
-        col1, col2 = st.columns(2)
-
+        col1, col2, col3 = st.columns(3)
+        
         col1.metric("Soil Organic Matter", f"{last['SOM_%']:.2f}")
-        col2.metric("Water Stock (index)", f"{last['Water_m3']:.1f}")
+        col2.metric("Water Stock", f"{last['Water_m3']:.1f}")
+        col3.metric("Water Stress Index", f"{last['Water_Stress']:.2f}")
 
-        st.line_chart(df.set_index("Anno")[["SOM_%", "Water_m3"]])
+        st.line_chart(df.set_index("Anno")[["Water_m3", "Water_Stress"]])
     
     elif slide == "Yield":
         st.subheader("Yield Trajectory")
