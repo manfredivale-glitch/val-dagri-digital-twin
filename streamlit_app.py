@@ -226,16 +226,16 @@ for anno in range(1, 6):
         resa,
         mol_ha
     ])
-return pd.DataFrame(
-    data,
-    columns=[
-        'Anno',
-        'SOM_%',
-        'Water_m3',
-        'Resa_t',
-        'MOL_Euro'
-    ]
-)
+    return pd.DataFrame(
+        data,
+        columns=[
+            'Anno',
+            'SOM_%',
+            'Water_m3',
+            'Resa_t',
+            'MOL_Euro'
+        ]
+    )
 # --- 3. OUTPUT ---
 df_base = run_simulation(scenario_config["Base Case"])
 
