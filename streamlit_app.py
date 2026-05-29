@@ -174,10 +174,13 @@ def run_simulation(sc):
         # -----------------------------
         # 4. WATER SYSTEM
         # -----------------------------
-        water_inflow = soil["water_factor"] * 50
-        water_loss = (1 - som * 0.02) * 40
-
-        water_stock = max(0, water_inflow - water_loss)
+        water_capacity = soil["water_factor"] * 100
+        
+        infiltration = 0.3 + (som * 0.05)
+        losses = 0.6 - (som * 0.03)
+        
+        water_stock = water_capacity * infiltration * losses
+        water_stock = max(5, water_stock)
 
         # -----------------------------
         # 5. SOIL HEALTH INDEX
