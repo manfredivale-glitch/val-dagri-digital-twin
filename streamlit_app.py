@@ -282,59 +282,59 @@ if len(df) > 0:
         st.subheader("💰 Financial Trajectory")
         st.line_chart(df.set_index("Anno")[["MOL_Euro"]])
 
-elif slide == "Energy Nexus":
-    st.subheader("⚡ Energy & Nexus Effects")
-    st.write("Agrivoltaico + Biochar dynamics embedded in model")
-    st.line_chart(df.set_index("Anno")[["Water_m3", "MOL_Euro"]])
+    elif slide == "Energy Nexus":
+        st.subheader("⚡ Energy & Nexus Effects")
+        st.write("Agrivoltaico + Biochar dynamics embedded in model")
+        st.line_chart(df.set_index("Anno")[["Water_m3", "MOL_Euro"]])
 
-elif slide == "Multi-Scenario":
-    st.subheader("📊 Multi-Scenario Comparison")
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric(
-        "Base Case MOL",
-        f"{round(df_base['MOL_Euro'].iloc[-1], 0)}€"
-    )
-
-    col2.metric(
-        "Upside Case MOL",
-        f"{round(df_up['MOL_Euro'].iloc[-1], 0)}€"
-    )
-
-    col3.metric(
-        "Downside Case MOL",
-        f"{round(df_down['MOL_Euro'].iloc[-1], 0)}€"
-    )
-
-    comparison_df = pd.DataFrame({
-        "Base": df_base.set_index("Anno")["MOL_Euro"],
-        "Upside": df_up.set_index("Anno")["MOL_Euro"],
-        "Downside": df_down.set_index("Anno")["MOL_Euro"]
-    })
-
-    st.line_chart(comparison_df)
-
-elif slide == "Investment Summary":
-        st.subheader("📊 Investment Score")
-
-        avg_margin = df["MOL_Euro"].mean()
-        volatility = df["MOL_Euro"].std()
-
-        investment_score = (
-            (avg_margin / 1000) * 0.4 +
-            (last["Resa_t"]) * 0.3 +
-            (last["SOM_%"]) * 0.2 -
-            (volatility / 500) * 0.1
-        )
+    elif slide == "Multi-Scenario":
+        st.subheader("📊 Multi-Scenario Comparison")
 
         col1, col2, col3 = st.columns(3)
 
-        col1.metric("Yield", round(last["Resa_t"], 2))
-        col2.metric("Margin", f"{round(last['MOL_Euro'], 0)}€")
-        col3.metric("Soil", round(last["SOM_%"], 2))
+        col1.metric(
+            "Base Case MOL",
+            f"{round(df_base['MOL_Euro'].iloc[-1], 0)}€"
+        )
 
-        st.metric("Investment Score", round(investment_score, 2))
+        col2.metric(
+            "Upside Case MOL",
+            f"{round(df_up['MOL_Euro'].iloc[-1], 0)}€"
+        )
+
+        col3.metric(
+            "Downside Case MOL",
+            f"{round(df_down['MOL_Euro'].iloc[-1], 0)}€"
+        )
+
+        comparison_df = pd.DataFrame({
+            "Base": df_base.set_index("Anno")["MOL_Euro"],
+            "Upside": df_up.set_index("Anno")["MOL_Euro"],
+            "Downside": df_down.set_index("Anno")["MOL_Euro"]
+        })
+
+        st.line_chart(comparison_df)
+
+    elif slide == "Investment Summary":
+            st.subheader("📊 Investment Score")
+
+            avg_margin = df["MOL_Euro"].mean()
+            volatility = df["MOL_Euro"].std()
+
+            investment_score = (
+                (avg_margin / 1000) * 0.4 +
+                (last["Resa_t"]) * 0.3 +
+                (last["SOM_%"]) * 0.2 -
+                (volatility / 500) * 0.1
+            )
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric("Yield", round(last["Resa_t"], 2))
+            col2.metric("Margin", f"{round(last['MOL_Euro'], 0)}€")
+            col3.metric("Soil", round(last["SOM_%"], 2))
+
+            st.metric("Investment Score", round(investment_score, 2))
 
         if investment_score > 5:
             st.success("🟢 High attractiveness")
