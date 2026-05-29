@@ -219,7 +219,7 @@ def run_simulation(sc):
 
     data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
-return pd.DataFrame(
+    return pd.DataFrame(
         data,
         columns=[
             'Anno',
