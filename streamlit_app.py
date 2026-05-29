@@ -345,4 +345,5 @@ elif slide == "Investment Summary":
 
 else:
     st.warning("Simulazione non disponibile")
-st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
+if len(df) > 0:
+    st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
