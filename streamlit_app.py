@@ -142,9 +142,7 @@ def run_simulation(sc):
         climate_multiplier *= sc["climate"]
 
         remediation_gain = min(0.2, biochar_input * 0.01) * sc["remediation"]
-
         contamination_factor = contamination_factor * (1 - remediation_gain)
-
         contamination_factor = max(0, contamination_factor)
 
         soil_recovery_bonus = (1 - contamination_factor)
@@ -153,84 +151,73 @@ def run_simulation(sc):
 
         riduzione_evap = 1.0 - (0.4 * copertura_agrivoltaico / 100)
 
+        ricavo_energia_ha = 2200 * (copertura_agrivoltaico / 100)
+
+        bonus_rigenerazione = max(0, 500 * (1 - copertura_agrivoltaico / 100)) if biochar_input > 15 else 0
+
         costo_h2o_base = costo_acqua * (3.0 if costo_acqua > 0.5 else 1.0)
 
         ritenzione_idrica = (som * 180) + (biochar_input * 3)
 
         fabbisogno_base = c["fabbisogno_irr"] * riduzione_evap
 
-    risk_water_volatility = (1 - agro_stability / 100)
+        water_saving_factor = (
+            (water_retention * 0.4) +
+            (evap_reduction * 0.4) +
+            (agro_stability * 0.2)
+        ) / 100
 
-    climate_sensitivity = risk_water_volatility * (1 - water_retention / 100)
+        risparmio_perm = fabbisogno_base * water_saving_factor
 
-    water_saving_factor = (
-        (water_retention * 0.4) +
-        (evap_reduction * 0.4) +
-        (agro_stability * 0.2)
-    ) / 100
+        risk_water_volatility = (1 - agro_stability / 100)
 
-    risparmio_perm = fabbisogno_base * water_saving_factor
+        climate_sensitivity = risk_water_volatility * (1 - water_retention / 100)
 
+        fabbisogno_est = max(
+            50,
+            fabbisogno_base
+            - (ritenzione_idrica * 1.5)
+            - risparmio_perm
+        )
 
-    fabbisogno_est = max(
-        50,
-        fabbisogno_base
-        - (ritenzione_idrica * 1.5)
-        - risparmio_perm
+    fabbisogno_est *= (1 + climate_sensitivity)        
+
+    biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
+
+    costo_log_unitario = 150 * (0.8 ** (superficie_totale / 500))
+
+    deficit = max(0, biochar_input - biochar_auto)
+
+    costo_logistica = deficit * costo_log_unitario
+
+    energia_pirolisi = (biochar_auto * superficie_totale) * 2
+
+    costo_h2o_finale = max(0.05, costo_h2o_base - (energia_pirolisi / 10000))
+
+    fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
+
+    resa = (
+        4.5
+        * (1 + fattore_suolo)
+        * c["risp_biochar"]
+        * soil["fertility_factor"]
+        * soil_recovery_bonus
+        * climate_multiplier
     )
 
-fabbisogno_est *= (1 + climate_sensitivity)        
+    market_multiplier = sc["price"] * premium_factor
+    time_multiplier = 1 + (premium_factor_time - 1) * (anno - 1)
+    
+    prezzo_effettivo = (c["prezzo"] * market_multiplier * time_multiplier)
 
-biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
+    mol_ha = (
+        (resa * prezzo_effettivo)
+        - c["costo_base"]
+        - costo_logistica
+        - (fabbisogno_est * costo_h2o_finale)
+    )
 
-        deficit = max(0, biochar_input - biochar_auto)
-
-        costo_logistica = deficit * 150
-
-        energia_pirolisi = (biochar_auto * superficie_totale) * 2
-
-        costo_h2o_finale = max(
-            0.05,
-            costo_h2o_base - (energia_pirolisi / 10000)
-        )
-
-        fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
-
-        resa = (
-            4.5
-            * (1 + fattore_suolo)
-            * c["risp_biochar"]
-            * soil["fertility_factor"]
-            * soil_recovery_bonus
-            * climate_multiplier
-        )
-
-        market_multiplier = sc["price"] * premium_factor
-
-        time_multiplier = 1 + (
-            (premium_factor_time - 1) * (anno - 1)
-        )
-
-        prezzo_effettivo = (
-            c["prezzo"]
-            * market_multiplier
-            * time_multiplier
-        )
-
-        mol_ha = (
-            (resa * prezzo_effettivo)
-            - c["costo_base"]
-            - costo_logistica
-            - (fabbisogno_est * costo_h2o_finale)
-        )
-
-        data.append([
-            anno,
-            som,
-            ritenzione_idrica,
-            resa,
-            mol_ha
-        ])
+    data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
     return pd.DataFrame(
         data,
