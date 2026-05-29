@@ -123,119 +123,111 @@ def run_simulation(sc):
     som = soil["som_init"]
     contamination_factor = soil["contamination"]
 
-for anno in range(1, 6):
+    water_stock = 100  # stato iniziale stabile
 
-    # -----------------------------
-    # 1. SHOCK CLIMATICO
-    # -----------------------------
-    shock_pool = (
-        ["good", "normal", "bad", "bad"] if sc["bad_bias"] > 0.4 else
-        ["good", "normal", "bad"] if sc["bad_bias"] > 0.25 else
-        ["good", "normal", "normal"]
-    )
+    for anno in range(1, 6):
 
-    shock = random.choice(shock_pool)
+        # -----------------------------
+        # 1. SHOCK CLIMATICO
+        # -----------------------------
+        shock_pool = (
+            ["good", "normal", "bad", "bad"] if sc["bad_bias"] > 0.4 else
+            ["good", "normal", "bad"] if sc["bad_bias"] > 0.25 else
+            ["good", "normal", "normal"]
+        )
 
-    climate_multiplier = (
-        1.1 if shock == "good" else
-        0.8 if shock == "bad" else
-        1.0
-    ) * sc["climate"]
+        shock = random.choice(shock_pool)
 
-    # -----------------------------
-    # 2. SOM (STOCK VIVO)
-    # -----------------------------
-    som += (
-        biochar_input * 0.02 +
-        biomassa_forestale * 0.01 -
-        som * 0.01
-    )
-    som = max(0, som)
+        climate_multiplier = (
+            1.1 if shock == "good" else
+            0.8 if shock == "bad" else
+            1.0
+        ) * sc["climate"]
 
-    # -----------------------------
-    # 3. CONTAMINATION (STOCK)
-    # -----------------------------
-    remediation_effect = (
-        biochar_input * 0.01 +
-        som * 0.002
-    )
+        # -----------------------------
+        # 2. SOM (STOCK DINAMICO)
+        # -----------------------------
+        som += (
+            biochar_input * 0.02 +
+            biomassa_forestale * 0.01 -
+            som * 0.01
+        )
+        som = max(0, som)
 
-    contamination_factor += (
-        sc["bad_bias"] * 0.02
-        - remediation_effect
-    )
+        # -----------------------------
+        # 3. CONTAMINATION
+        # -----------------------------
+        remediation_effect = (
+            biochar_input * 0.01 +
+            som * 0.002
+        )
 
-    contamination_factor = min(max(contamination_factor, 0), 1)
+        contamination_factor += (
+            sc["bad_bias"] * 0.02
+            - remediation_effect
+        )
 
-    soil_recovery_bonus = (1 - contamination_factor)
+        contamination_factor = min(max(contamination_factor, 0), 1)
 
-    # -----------------------------
-    # 4. WATER STOCK (DINAMICO)
-    # -----------------------------
-    water_inflow = soil["water_factor"] * 50
-    water_loss = (1 - som * 0.02) * 40
+        soil_recovery_bonus = (1 - contamination_factor)
 
-    water_stock = water_inflow - water_loss
-    water_stock = max(0, water_stock)
+        # -----------------------------
+        # 4. WATER SYSTEM
+        # -----------------------------
+        water_inflow = soil["water_factor"] * 50
+        water_loss = (1 - som * 0.02) * 40
 
-    # -----------------------------
-    # 5. SOIL HEALTH (INDICE EMERGENTE)
-    # -----------------------------
-    soil_health = (
-        som * 0.4 +
-        (water_stock / 100) * 0.4 +
-        (1 - contamination_factor) * 0.2
-    )
+        water_stock = max(0, water_inflow - water_loss)
 
-    # -----------------------------
-    # 6. YIELD
-    # -----------------------------
-    resa = (
-        4.5 *
-        soil_health *
-        c["risp_biochar"] *
-        climate_multiplier
-    )
+        # -----------------------------
+        # 5. SOIL HEALTH INDEX
+        # -----------------------------
+        soil_health = (
+            som * 0.4 +
+            (water_stock / 100) * 0.4 +
+            (1 - contamination_factor) * 0.2
+        )
 
-    # -----------------------------
-    # 7. ECONOMIA
-    # -----------------------------
-    price_trend = 1 + (premium_factor_time - 1) * (anno - 1)
+        # -----------------------------
+        # 6. YIELD
+        # -----------------------------
+        resa = (
+            4.5 *
+            soil_health *
+            c["risp_biochar"] *
+            climate_multiplier
+        )
 
-    prezzo_effettivo = (
-        c["prezzo"] *
-        sc["price"] *
-        premium_factor *
-        price_trend
-    )
+        # -----------------------------
+        # 7. PRICE
+        # -----------------------------
+        price_trend = 1 + (premium_factor_time - 1) * (anno - 1)
 
-    costi = c["costo_base"]
+        prezzo_effettivo = (
+            c["prezzo"] *
+            sc["price"] *
+            premium_factor *
+            price_trend
+        )
 
-    mol_ha = (
-        resa * prezzo_effettivo
-        - costi
-    )
+        mol_ha = (resa * prezzo_effettivo) - c["costo_base"]
 
-    # -----------------------------
-    # 8. STORE
-    # -----------------------------
-    data.append([
-        anno,
-        som,
-        water_stock,
-        resa,
-        mol_ha
-    ])
+        # -----------------------------
+        # 8. STORE
+        # -----------------------------
+        data.append([
+            anno,
+            som,
+            water_stock,
+            resa,
+            mol_ha
+        ])
+
     return pd.DataFrame(
         data,
-        columns=[
-            'Anno',
-            'SOM_%',
-            'Water_m3',
-            'Resa_t',
-            'MOL_Euro'
-        ]
+        columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro']
     )
+    
 # --- 3. OUTPUT ---
 df_base = run_simulation(scenario_config["Base Case"])
 
