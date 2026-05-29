@@ -180,44 +180,44 @@ def run_simulation(sc):
             - risparmio_perm
         )
 
-    fabbisogno_est *= (1 + climate_sensitivity)        
+        fabbisogno_est *= (1 + climate_sensitivity)        
 
-    biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
+        biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
 
-    costo_log_unitario = 150 * (0.8 ** (superficie_totale / 500))
+        costo_log_unitario = 150 * (0.8 ** (superficie_totale / 500))
 
-    deficit = max(0, biochar_input - biochar_auto)
+        deficit = max(0, biochar_input - biochar_auto)
 
-    costo_logistica = deficit * costo_log_unitario
+        costo_logistica = deficit * costo_log_unitario
 
-    energia_pirolisi = (biochar_auto * superficie_totale) * 2
+        energia_pirolisi = (biochar_auto * superficie_totale) * 2
 
-    costo_h2o_finale = max(0.05, costo_h2o_base - (energia_pirolisi / 10000))
+        costo_h2o_finale = max(0.05, costo_h2o_base - (energia_pirolisi / 10000))
 
-    fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
+        fattore_suolo = 1 - (1 / (1 + (ritenzione_idrica / 300)))
 
-    resa = (
-        4.5
-        * (1 + fattore_suolo)
-        * c["risp_biochar"]
-        * soil["fertility_factor"]
-        * soil_recovery_bonus
-        * climate_multiplier
-    )
+        resa = (
+            4.5
+            * (1 + fattore_suolo)
+            * c["risp_biochar"]
+            * soil["fertility_factor"]
+            * soil_recovery_bonus
+            * climate_multiplier
+        )
 
-    market_multiplier = sc["price"] * premium_factor
-    time_multiplier = 1 + (premium_factor_time - 1) * (anno - 1)
+        market_multiplier = sc["price"] * premium_factor
+        time_multiplier = 1 + (premium_factor_time - 1) * (anno - 1)
     
-    prezzo_effettivo = (c["prezzo"] * market_multiplier * time_multiplier)
+        prezzo_effettivo = (c["prezzo"] * market_multiplier * time_multiplier)
 
-    mol_ha = (
-        (resa * prezzo_effettivo)
-        - c["costo_base"]
-        - costo_logistica
-        - (fabbisogno_est * costo_h2o_finale)
-    )
+        mol_ha = (
+            (resa * prezzo_effettivo)
+            - c["costo_base"]
+            - costo_logistica
+            - (fabbisogno_est * costo_h2o_finale)
+        )
 
-    data.append([anno, som, ritenzione_idrica, resa, mol_ha])
+        data.append([anno, som, ritenzione_idrica, resa, mol_ha])
 
     return pd.DataFrame(
         data,
