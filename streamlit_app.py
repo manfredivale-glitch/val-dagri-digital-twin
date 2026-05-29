@@ -244,6 +244,7 @@ slide = st.sidebar.radio(
         "Yield",
         "Finance",
         "Energy Nexus",
+        "Multi-Scenario",
         "Investment Summary"
     ]
 )
@@ -275,39 +276,40 @@ if len(df) > 0:
         st.subheader("💰 Financial Trajectory")
         st.line_chart(df.set_index("Anno")[["MOL_Euro"]])
 
-    elif slide == "Energy Nexus":
-        st.subheader("⚡ Energy & Nexus Effects")
-        st.write("Agrivoltaico + Biochar dynamics embedded in model")
-        st.line_chart(df.set_index("Anno")[["Water_m3", "MOL_Euro"]])
-        st.subheader("📊 Multi-Scenario Comparison")
+elif slide == "Energy Nexus":
+    st.subheader("⚡ Energy & Nexus Effects")
+    st.write("Agrivoltaico + Biochar dynamics embedded in model")
+    st.line_chart(df.set_index("Anno")[["Water_m3", "MOL_Euro"]])
 
-col1, col2, col3 = st.columns(3)
+elif slide == "Multi-Scenario":
+    st.subheader("📊 Multi-Scenario Comparison")
 
-col1.metric(
-    "Base Case MOL",
-    f"{round(df_base['MOL_Euro'].iloc[-1], 0)}€"
-)
+    col1, col2, col3 = st.columns(3)
 
-col2.metric(
-    "Upside Case MOL",
-    f"{round(df_up['MOL_Euro'].iloc[-1], 0)}€"
-)
+    col1.metric(
+        "Base Case MOL",
+        f"{round(df_base['MOL_Euro'].iloc[-1], 0)}€"
+    )
 
-col3.metric(
-    "Downside Case MOL",
-    f"{round(df_down['MOL_Euro'].iloc[-1], 0)}€"
-)
+    col2.metric(
+        "Upside Case MOL",
+        f"{round(df_up['MOL_Euro'].iloc[-1], 0)}€"
+    )
 
-comparison_df = pd.DataFrame({
-    "Base": df_base.set_index("Anno")["MOL_Euro"],
-    "Upside": df_up.set_index("Anno")["MOL_Euro"],
-    "Downside": df_down.set_index("Anno")["MOL_Euro"]
-})
+    col3.metric(
+        "Downside Case MOL",
+        f"{round(df_down['MOL_Euro'].iloc[-1], 0)}€"
+    )
 
-st.line_chart(comparison_df)
+    comparison_df = pd.DataFrame({
+        "Base": df_base.set_index("Anno")["MOL_Euro"],
+        "Upside": df_up.set_index("Anno")["MOL_Euro"],
+        "Downside": df_down.set_index("Anno")["MOL_Euro"]
+    })
 
-    elif slide == "Investment Summary":
+    st.line_chart(comparison_df)
 
+elif slide == "Investment Summary":
         st.subheader("📊 Investment Score")
 
         avg_margin = df["MOL_Euro"].mean()
