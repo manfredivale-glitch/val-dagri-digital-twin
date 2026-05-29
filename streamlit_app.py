@@ -210,6 +210,11 @@ def run_simulation(sc):
         
         # stabilizzazione (mai collasso a zero immediato)
         water_stock = max(10, water_stock)
+        # ============================
+        # 🧊 WATER STRESS INDEX
+        # ============================
+
+        water_stress = max(0, 1 - (water_stock / 100))
 
         # -----------------------------
         # 5. SOIL HEALTH INDEX
@@ -252,9 +257,9 @@ def run_simulation(sc):
             som,
             water_stock,
             resa,
-            mol_ha
+            mol_ha,
+            water_stress
         ])
-
     return pd.DataFrame(
         data,
         columns=['Anno', 'SOM_%', 'Water_m3', 'Resa_t', 'MOL_Euro']
