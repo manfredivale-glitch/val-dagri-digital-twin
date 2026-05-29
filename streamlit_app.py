@@ -316,6 +316,7 @@ if len(df) > 0:
         st.line_chart(comparison_df)
 
     elif slide == "Investment Summary":
+        
             st.subheader("📊 Investment Score")
 
             avg_margin = df["MOL_Euro"].mean()
@@ -336,12 +337,12 @@ if len(df) > 0:
 
             st.metric("Investment Score", round(investment_score, 2))
 
-        if investment_score > 5:
-            st.success("🟢 High attractiveness")
-        elif investment_score > 3:
-            st.warning("🟡 Medium attractiveness")
-        else:
-            st.error("🔴 Low attractiveness")
+            if investment_score > 5:
+                st.success("🟢 High attractiveness")
+            elif investment_score > 3:
+                st.warning("🟡 Medium attractiveness")
+            else:
+                st.error("🔴 Low attractiveness")
 
 else:
     st.warning("Simulazione non disponibile")
