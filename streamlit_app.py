@@ -254,7 +254,7 @@ slide = st.sidebar.radio(
     ]
 )
 
-st.subheader("📊 Investment Slide Engine")
+st.subheader("Investment Slide Engine")
 
 if len(df) > 0:
     last = df.iloc[-1]
@@ -284,7 +284,7 @@ if len(df) > 0:
     
     elif slide == "Ecology":
 
-        st.subheader("🌱 Soil System Evolution")
+        st.subheader("Soil System Evolution")
 
         col1, col2 = st.columns(2)
 
@@ -294,12 +294,12 @@ if len(df) > 0:
         st.line_chart(df.set_index("Anno")[["SOM_%", "Water_m3"]])
     
     elif slide == "Yield":
-        st.subheader("🌾 Yield Trajectory")
+        st.subheader("Yield Trajectory")
         st.line_chart(df.set_index("Anno")[["Resa_t"]])
 
     elif slide == "Finance":
 
-        st.subheader("💰 Financial Performance")
+        st.subheader("Financial Performance")
 
         col1, col2 = st.columns(2)
 
@@ -310,7 +310,7 @@ if len(df) > 0:
     
     elif slide == "Energy Nexus":
 
-        st.subheader("⚡ Energy & Water Nexus")
+        st.subheader("Energy & Water Nexus")
 
         st.metric("Water Efficiency Proxy", f"{last['Water_m3']:.1f}")
 
@@ -318,7 +318,7 @@ if len(df) > 0:
     
     elif slide == "Multi-Scenario":
 
-        st.subheader("📊 Scenario Comparison")
+        st.subheader("Scenario Comparison")
 
         comparison_df = pd.DataFrame({
             "Base": df_base.set_index("Anno")["MOL_Euro"],
