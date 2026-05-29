@@ -179,7 +179,8 @@ def run_simulation(sc):
         - risparmio_perm
     )
 
-fabbisogno_est *= (1 + climate_sensitivity)        biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
+fabbisogno_est *= (1 + climate_sensitivity)        
+biochar_auto = (c["residuo_biomassa"] + biomassa_forestale) / 4
 
         deficit = max(0, biochar_input - biochar_auto)
 
