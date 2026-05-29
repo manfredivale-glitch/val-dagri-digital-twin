@@ -269,42 +269,42 @@ if len(df) > 0:
         })
 
     elif slide == "Ecology":
-        st.subheader("🌱 Soil & Ecology Evolution")
-        st.line_chart(df.set_index("Anno")[["SOM_%"]])
-        st.line_chart(df.set_index("Anno")[["Water_m3"]])
 
+        st.subheader("🌱 Soil System Evolution")
+
+        col1, col2 = st.columns(2)
+
+        col1.metric("Soil Organic Matter", f"{last['SOM_%']:.2f}")
+        col2.metric("Water Stock (index)", f"{last['Water_m3']:.1f}")
+
+        st.line_chart(df.set_index("Anno")[["SOM_%", "Water_m3"]])
+    
     elif slide == "Yield":
         st.subheader("🌾 Yield Trajectory")
         st.line_chart(df.set_index("Anno")[["Resa_t"]])
 
     elif slide == "Finance":
-        st.subheader("💰 Financial Trajectory")
+
+        st.subheader("💰 Financial Performance")
+
+        col1, col2 = st.columns(2)
+
+        col1.metric("Final Margin", f"{last['MOL_Euro']:.0f}€")
+        col2.metric("Avg Margin", f"{df['MOL_Euro'].mean():.0f}€")
+
         st.line_chart(df.set_index("Anno")[["MOL_Euro"]])
-
+    
     elif slide == "Energy Nexus":
-        st.subheader("⚡ Energy & Nexus Effects")
-        st.write("Agrivoltaico + Biochar dynamics embedded in model")
-        st.line_chart(df.set_index("Anno")[["Water_m3", "MOL_Euro"]])
 
+        st.subheader("⚡ Energy & Water Nexus")
+
+        st.metric("Water Efficiency Proxy", f"{last['Water_m3']:.1f}")
+
+        st.line_chart(df.set_index("Anno")[["Water_m3"]])
+    
     elif slide == "Multi-Scenario":
-        st.subheader("📊 Multi-Scenario Comparison")
 
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric(
-            "Base Case MOL",
-            f"{round(df_base['MOL_Euro'].iloc[-1], 0)}€"
-        )
-
-        col2.metric(
-            "Upside Case MOL",
-            f"{round(df_up['MOL_Euro'].iloc[-1], 0)}€"
-        )
-
-        col3.metric(
-            "Downside Case MOL",
-            f"{round(df_down['MOL_Euro'].iloc[-1], 0)}€"
-        )
+        st.subheader("📊 Scenario Comparison")
 
         comparison_df = pd.DataFrame({
             "Base": df_base.set_index("Anno")["MOL_Euro"],
@@ -313,7 +313,7 @@ if len(df) > 0:
         })
 
         st.line_chart(comparison_df)
-
+    
     elif slide == "Investment Summary":
         
         st.subheader("📊 Investment Score")
@@ -345,6 +345,3 @@ if len(df) > 0:
 
 else:
     st.warning("Simulazione non disponibile")
-
-if len(df) > 0:
-    st.line_chart(df.set_index('Anno')[['Water_m3', 'MOL_Euro']])
