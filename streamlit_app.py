@@ -14,148 +14,6 @@ def get_recommended_strategy(soil_type):
     }
     return strategies.get(soil_type, {"type": "Hydrochar", "dosage": 10})
 
-rec = get_recommended_strategy(soil_type)
-st.sidebar.info(f"💡 Protocollo consigliato per {soil_type}: {rec['type']} a {rec['dosage']} t/ha")
-
-if st.sidebar.checkbox("Usa dosaggio consigliato"):
-    biochar_input = rec["dosage"]
-    amendment_type = rec["type"]
-else:
-    biochar_input = st.sidebar.slider("Biochar aggiunto (ton/ha)", 0, 30, 10)
-    amendment_type = st.sidebar.selectbox("Tipo Emendamento", ["Biochar (Pyro)", "Hydrochar"])
-
-soil_config = {
-    "Sandy Degraded": {
-        "som_init": 0.8,
-        "water_factor": 0.6,
-        "fertility_factor": 0.7,
-        "contamination": 0.1
-    },
-    "Clay Agricultural": {
-        "som_init": 1.5,
-        "water_factor": 1.0,
-        "fertility_factor": 1.0,
-        "contamination": 0.0
-    },
-    "Mediterranean Calcareous": {
-        "som_init": 1.2,
-        "water_factor": 0.8,
-        "fertility_factor": 0.9,
-        "contamination": 0.0
-    },
-    "Organic High Carbon": {
-        "som_init": 2.8,
-        "water_factor": 1.4,
-        "fertility_factor": 1.3,
-        "contamination": 0.0
-    },
-    "Contaminated Brownfield": {
-        "som_init": 0.9,
-        "water_factor": 0.7,
-        "fertility_factor": 0.5,
-        "contamination": 0.8
-    }
-}
-
-soil = soil_config[soil_type]
-
-st.sidebar.header("Parametri di Scala e Ottimizzazione")
-costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
-superficie_totale = st.sidebar.number_input("Superficie Progetto (ha)", 10, 5000, 500)
-biomassa_forestale = st.sidebar.slider("Biomassa dai boschi (ton/ha)", 0, 50, 10)
-
-st.sidebar.subheader("Nexus Energetico")
-copertura_agrivoltaico = st.sidebar.slider("Copertura Agrivoltaico (%)", 0, 100, 0)
-
-st.sidebar.subheader("Regenerative Water System")
-defaults = get_default_regen_params(soil_type, amendment_type)
-
-if st.sidebar.checkbox("Usa parametri rigenerativi di default"):
-    water_retention = defaults["ret"]
-    evap_reduction = defaults["evap"]
-    agro_stability = defaults["stab"]
-    # Mostriamo i valori ma non li rendiamo modificabili se è attiva la spunta
-    st.sidebar.text(f"Ritenzione: {water_retention}% (auto)")
-    st.sidebar.text(f"Rid. Evap: {evap_reduction}% (auto)")
-else:
-    water_retention = st.sidebar.slider("Water Retention Capacity", 0, 100, defaults["ret"])
-    evap_reduction = st.sidebar.slider("Evaporation Reduction", 0, 100, defaults["evap"])
-    agro_stability = st.sidebar.slider("Agroecological Stability", 0, 100, defaults["stab"])
-
-coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
-
-# Definiamo i cursori del PREZZO fuori dal ciclo
-st.sidebar.subheader("Dinamiche di Mercato")
-premium_factor = st.sidebar.slider(f"Premium Factor ({coltura})", 1.0, 2.0, 1.2)
-premium_factor_time = st.sidebar.slider(f"Premium Factor Time ({coltura})", 1.0, 1.5, 1.1)
-
-st.sidebar.subheader("Scenario di Investimento")
-
-scenario = st.sidebar.selectbox(
-    "Seleziona scenario",
-    ["Base Case", "Upside Case", "Downside Case"]
-)
-
-config = {
-    "Cereali Antichi": {"prezzo": 160, "costo_base": 500, "risp_biochar": 1.1, "fabbisogno_irr": 400, "residuo_biomassa": 5.0},
-    "Mandorle": {"prezzo": 450, "costo_base": 1200, "risp_biochar": 1.4, "fabbisogno_irr": 1200, "residuo_biomassa": 3.0},
-    "Orticole Premium": {"prezzo": 350, "costo_base": 1500, "risp_biochar": 1.6, "fabbisogno_irr": 2500, "residuo_biomassa": 1.5},
-    "Mix Biodiversità": {"prezzo": 280, "costo_base": 700, "risp_biochar": 1.3, "fabbisogno_irr": 600, "residuo_biomassa": 8.0}
-}
-c = config[coltura]
-scenario_config = {
-    "Base Case": {
-        "climate": 1.0,
-        "price": 1.0,
-        "price_trend": 1.0,
-        "remediation": 1.0,
-        "bad_bias": 0.33
-    },
-    "Upside Case": {
-        "climate": 1.1,
-        "price": 1.2,
-        "price_trend": 1.15,
-        "remediation": 1.2,
-        "bad_bias": 0.2
-    },
-    "Downside Case": {
-        "climate": 0.9,
-        "price": 0.85,
-        "price_trend": 0.9,
-        "remediation": 0.8,
-        "bad_bias": 0.5
-    }
-}
-
-sc = scenario_config[scenario]
-# --- 2. LOGICA DI CALCOLO DINAMICA ---
-
-def get_efficiency_factor(dosage, texture):
-    # Applica il limite MDPI per evitare occlusione pori
-    thresholds = {"Sandy Degraded": 12, "Clay Agricultural": 25, "Mediterranean Calcareous": 20}
-    limit = thresholds.get(texture, 15)
-    return 1.0 if dosage <= limit else max(0.4, 1 - (dosage - limit) * 0.05)
-
-def get_bca_uplift(dosage, texture):
-    # Normalizzazione basata su Meta-analisi 2019
-    # Ritorna l'incremento di AWC (Available Water Content)
-    coeffs = {"Sandy Degraded": 0.45, "Clay Agricultural": 0.14, "Mediterranean Calcareous": 0.20}
-    return dosage * 0.70 * coeffs.get(texture, 0.2) * 0.01
-
-def get_aging_factor(anno, type):
-    return min(1.0, (anno / 1.5)) if type == "Hydrochar" else min(1.0, (anno / 3.0))
-
-def get_recommended_strategy(soil_type):
-    # Logica di "esperto" integrata
-    strategies = {
-        "Sandy Degraded": {"type": "Hydrochar", "dosage": 15},
-        "Contaminated Brownfield": {"type": "Biochar (Pyro)", "dosage": 20},
-        "Clay Agricultural": {"type": "Hydrochar", "dosage": 10},
-        "Mediterranean Calcareous": {"type": "Hydrochar", "dosage": 12},
-        "Organic High Carbon": {"type": "Hydrochar", "dosage": 5}
-    }
-    return strategies.get(soil_type, {"type": "Hydrochar", "dosage": 10})
-
 def get_default_regen_params(soil_type, amendment_type):
     # Base params per ogni tipo di suolo
     # (Retention, Evaporation, Stability)
@@ -174,24 +32,22 @@ def get_default_regen_params(soil_type, amendment_type):
         
     return {"ret": ret, "evap": evap, "stab": stab}
 
+# --- 2. LOGICA DI CALCOLO DINAMICA ---
 
-st.title("Val d’Agri Digital Twin - Regenerative Asset Platform RAP")
-st.sidebar.header("Parametri di Simulazione")
+def get_efficiency_factor(dosage, texture):
+    # Applica il limite MDPI per evitare occlusione pori
+    thresholds = {"Sandy Degraded": 12, "Clay Agricultural": 25, "Mediterranean Calcareous": 20}
+    limit = thresholds.get(texture, 15)
+    return 1.0 if dosage <= limit else max(0.4, 1 - (dosage - limit) * 0.05)
 
-# --- 1. CONFIGURAZIONE AVANZATA (SIDEBAR) ---
-st.sidebar.subheader("Tipologia Pedologica")
+def get_bca_uplift(dosage, texture):
+    # Normalizzazione basata su Meta-analisi 2019
+    # Ritorna l'incremento di AWC (Available Water Content)
+    coeffs = {"Sandy Degraded": 0.45, "Clay Agricultural": 0.14, "Mediterranean Calcareous": 0.20}
+    return dosage * 0.70 * coeffs.get(texture, 0.2) * 0.01
 
-soil_type = st.sidebar.selectbox(
-    "Tipo di suolo",
-    [
-        "Sandy Degraded",
-        "Clay Agricultural",
-        "Mediterranean Calcareous",
-        "Organic High Carbon",
-        "Contaminated Brownfield"
-    ]
-)
-
+def get_aging_factor(anno, type):
+    return min(1.0, (anno / 1.5)) if type == "Hydrochar" else min(1.0, (anno / 3.0))
 
 def run_simulation(sc, amendment_type):
 
@@ -345,6 +201,138 @@ def run_simulation(sc, amendment_type):
             'Water_Stress'
         ]
     )
+
+st.title("Val d’Agri Digital Twin - Regenerative Asset Platform RAP")
+st.sidebar.header("Parametri di Simulazione")
+
+# --- 1. CONFIGURAZIONE AVANZATA (SIDEBAR) ---
+st.sidebar.subheader("Tipologia Pedologica")
+
+soil_type = st.sidebar.selectbox(
+    "Tipo di suolo",
+    [
+        "Sandy Degraded",
+        "Clay Agricultural",
+        "Mediterranean Calcareous",
+        "Organic High Carbon",
+        "Contaminated Brownfield"
+    ]
+)
+
+rec = get_recommended_strategy(soil_type)
+st.sidebar.info(f"💡 Protocollo consigliato per {soil_type}: {rec['type']} a {rec['dosage']} t/ha")
+
+if st.sidebar.checkbox("Usa dosaggio consigliato"):
+    biochar_input = rec["dosage"]
+    amendment_type = rec["type"]
+else:
+    biochar_input = st.sidebar.slider("Biochar aggiunto (ton/ha)", 0, 30, 10)
+    amendment_type = st.sidebar.selectbox("Tipo Emendamento", ["Biochar (Pyro)", "Hydrochar"])
+
+soil_config = {
+    "Sandy Degraded": {
+        "som_init": 0.8,
+        "water_factor": 0.6,
+        "fertility_factor": 0.7,
+        "contamination": 0.1
+    },
+    "Clay Agricultural": {
+        "som_init": 1.5,
+        "water_factor": 1.0,
+        "fertility_factor": 1.0,
+        "contamination": 0.0
+    },
+    "Mediterranean Calcareous": {
+        "som_init": 1.2,
+        "water_factor": 0.8,
+        "fertility_factor": 0.9,
+        "contamination": 0.0
+    },
+    "Organic High Carbon": {
+        "som_init": 2.8,
+        "water_factor": 1.4,
+        "fertility_factor": 1.3,
+        "contamination": 0.0
+    },
+    "Contaminated Brownfield": {
+        "som_init": 0.9,
+        "water_factor": 0.7,
+        "fertility_factor": 0.5,
+        "contamination": 0.8
+    }
+}
+
+soil = soil_config[soil_type]
+
+st.sidebar.header("Parametri di Scala e Ottimizzazione")
+costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
+superficie_totale = st.sidebar.number_input("Superficie Progetto (ha)", 10, 5000, 500)
+biomassa_forestale = st.sidebar.slider("Biomassa dai boschi (ton/ha)", 0, 50, 10)
+
+st.sidebar.subheader("Nexus Energetico")
+copertura_agrivoltaico = st.sidebar.slider("Copertura Agrivoltaico (%)", 0, 100, 0)
+
+st.sidebar.subheader("Regenerative Water System")
+defaults = get_default_regen_params(soil_type, amendment_type)
+
+if st.sidebar.checkbox("Usa parametri rigenerativi di default"):
+    water_retention = defaults["ret"]
+    evap_reduction = defaults["evap"]
+    agro_stability = defaults["stab"]
+    # Mostriamo i valori ma non li rendiamo modificabili se è attiva la spunta
+    st.sidebar.text(f"Ritenzione: {water_retention}% (auto)")
+    st.sidebar.text(f"Rid. Evap: {evap_reduction}% (auto)")
+else:
+    water_retention = st.sidebar.slider("Water Retention Capacity", 0, 100, defaults["ret"])
+    evap_reduction = st.sidebar.slider("Evaporation Reduction", 0, 100, defaults["evap"])
+    agro_stability = st.sidebar.slider("Agroecological Stability", 0, 100, defaults["stab"])
+
+coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
+
+# Definiamo i cursori del PREZZO fuori dal ciclo
+st.sidebar.subheader("Dinamiche di Mercato")
+premium_factor = st.sidebar.slider(f"Premium Factor ({coltura})", 1.0, 2.0, 1.2)
+premium_factor_time = st.sidebar.slider(f"Premium Factor Time ({coltura})", 1.0, 1.5, 1.1)
+
+st.sidebar.subheader("Scenario di Investimento")
+
+scenario = st.sidebar.selectbox(
+    "Seleziona scenario",
+    ["Base Case", "Upside Case", "Downside Case"]
+)
+
+config = {
+    "Cereali Antichi": {"prezzo": 160, "costo_base": 500, "risp_biochar": 1.1, "fabbisogno_irr": 400, "residuo_biomassa": 5.0},
+    "Mandorle": {"prezzo": 450, "costo_base": 1200, "risp_biochar": 1.4, "fabbisogno_irr": 1200, "residuo_biomassa": 3.0},
+    "Orticole Premium": {"prezzo": 350, "costo_base": 1500, "risp_biochar": 1.6, "fabbisogno_irr": 2500, "residuo_biomassa": 1.5},
+    "Mix Biodiversità": {"prezzo": 280, "costo_base": 700, "risp_biochar": 1.3, "fabbisogno_irr": 600, "residuo_biomassa": 8.0}
+}
+c = config[coltura]
+scenario_config = {
+    "Base Case": {
+        "climate": 1.0,
+        "price": 1.0,
+        "price_trend": 1.0,
+        "remediation": 1.0,
+        "bad_bias": 0.33
+    },
+    "Upside Case": {
+        "climate": 1.1,
+        "price": 1.2,
+        "price_trend": 1.15,
+        "remediation": 1.2,
+        "bad_bias": 0.2
+    },
+    "Downside Case": {
+        "climate": 0.9,
+        "price": 0.85,
+        "price_trend": 0.9,
+        "remediation": 0.8,
+        "bad_bias": 0.5
+    }
+}
+
+sc = scenario_config[scenario]
     
 # --- 3. OUTPUT ---
 df_base = run_simulation(scenario_config["Base Case"], amendment_type)
