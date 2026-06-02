@@ -20,7 +20,26 @@ soil_type = st.sidebar.selectbox(
     ]
 )
 
-amendment_type = st.sidebar.selectbox("Tipo Emendamento", ["Biochar (Pyro)", "Hydrochar"])
+# LOGICA GUIDATA PER L'EMENDAMENTO
+def get_recommended_strategy(soil_type):
+    strategies = {
+        "Sandy Degraded": {"type": "Hydrochar", "dosage": 15},
+        "Contaminated Brownfield": {"type": "Biochar (Pyro)", "dosage": 20},
+        "Clay Agricultural": {"type": "Hydrochar", "dosage": 10},
+        "Mediterranean Calcareous": {"type": "Hydrochar", "dosage": 12},
+        "Organic High Carbon": {"type": "Hydrochar", "dosage": 5}
+    }
+    return strategies.get(soil_type, {"type": "Hydrochar", "dosage": 10})
+
+rec = get_recommended_strategy(soil_type)
+st.sidebar.info(f"💡 Protocollo consigliato per {soil_type}: {rec['type']} a {rec['dosage']} t/ha")
+
+if st.sidebar.checkbox("Usa dosaggio consigliato"):
+    biochar_input = rec["dosage"]
+    amendment_type = rec["type"]
+else:
+    biochar_input = st.sidebar.slider("Biochar aggiunto (ton/ha)", 0, 30, 10)
+    amendment_type = st.sidebar.selectbox("Tipo Emendamento", ["Biochar (Pyro)", "Hydrochar"])
 
 soil_config = {
     "Sandy Degraded": {
@@ -58,7 +77,6 @@ soil_config = {
 soil = soil_config[soil_type]
 
 st.sidebar.header("Parametri di Scala e Ottimizzazione")
-biochar_input = st.sidebar.slider("Biochar aggiunto (ton/ha)", 0, 30, 10)
 costo_acqua = st.sidebar.slider("Costo Energia/Acqua (€/m3)", 0.1, 1.0, 0.45)
 superficie_totale = st.sidebar.number_input("Superficie Progetto (ha)", 10, 5000, 500)
 biomassa_forestale = st.sidebar.slider("Biomassa dai boschi (ton/ha)", 0, 50, 10)
@@ -133,6 +151,17 @@ def get_bca_uplift(dosage, texture):
 
 def get_aging_factor(anno, type):
     return min(1.0, (anno / 1.5)) if type == "Hydrochar" else min(1.0, (anno / 3.0))
+
+def get_recommended_strategy(soil_type):
+    # Logica di "esperto" integrata
+    strategies = {
+        "Sandy Degraded": {"type": "Hydrochar", "dosage": 15},
+        "Contaminated Brownfield": {"type": "Biochar (Pyro)", "dosage": 20},
+        "Clay Agricultural": {"type": "Hydrochar", "dosage": 10},
+        "Mediterranean Calcareous": {"type": "Hydrochar", "dosage": 12},
+        "Organic High Carbon": {"type": "Hydrochar", "dosage": 5}
+    }
+    return strategies.get(soil_type, {"type": "Hydrochar", "dosage": 10})
 
 def run_simulation(sc, amendment_type):
 
