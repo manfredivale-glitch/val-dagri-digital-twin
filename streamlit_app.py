@@ -3,23 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import random
 
-st.title("Val d’Agri Digital Twin - Regenerative Asset Platform RAP")
-st.sidebar.header("Parametri di Simulazione")
-
-# --- 1. CONFIGURAZIONE AVANZATA (SIDEBAR) ---
-st.sidebar.subheader("Tipologia Pedologica")
-
-soil_type = st.sidebar.selectbox(
-    "Tipo di suolo",
-    [
-        "Sandy Degraded",
-        "Clay Agricultural",
-        "Mediterranean Calcareous",
-        "Organic High Carbon",
-        "Contaminated Brownfield"
-    ]
-)
-
 # LOGICA GUIDATA PER L'EMENDAMENTO
 def get_recommended_strategy(soil_type):
     strategies = {
@@ -190,6 +173,25 @@ def get_default_regen_params(soil_type, amendment_type):
         ret += 5
         
     return {"ret": ret, "evap": evap, "stab": stab}
+
+
+st.title("Val d’Agri Digital Twin - Regenerative Asset Platform RAP")
+st.sidebar.header("Parametri di Simulazione")
+
+# --- 1. CONFIGURAZIONE AVANZATA (SIDEBAR) ---
+st.sidebar.subheader("Tipologia Pedologica")
+
+soil_type = st.sidebar.selectbox(
+    "Tipo di suolo",
+    [
+        "Sandy Degraded",
+        "Clay Agricultural",
+        "Mediterranean Calcareous",
+        "Organic High Carbon",
+        "Contaminated Brownfield"
+    ]
+)
+
 
 def run_simulation(sc, amendment_type):
 
