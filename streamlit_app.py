@@ -183,42 +183,36 @@ def run_simulation(sc):
 
         soil_recovery_bonus = (1 - contamination_factor)
         
-        # ============================
-        # 🌊 WATER SYSTEM (PHYSICAL BALANCE)
-        # ============================
+        # ==========================================================
+        # 🌊 WATER SYSTEM (PHYSICAL BALANCE UPDATED)
+        # ==========================================================
         
-        # 1. WATER INPUT (pioggia + suolo + resilienza)
+        # 1. EFFETTO AGROVOLTAICO (nuovo: riduce l'evaporazione)
+        evap_reduction_solar = copertura_agrivoltaico * 0.003
+        
+        # 2. CALCOLO COEFFICIENTI SCIENTIFICI
+        efficiency = get_efficiency_factor(biochar_input, soil_type)
+        bca_bonus = get_bca_uplift(biochar_input, soil_type)
+        
+        # 3. WATER INPUT (base + bonus biochar * efficienza fisica)
         base_precipitation = 80 * soil["water_factor"]
-        
         soil_absorption = 0.3 + (som * 0.06) + (biomassa_forestale * 0.002)
+        water_input = base_precipitation * (soil_absorption + bca_bonus) * efficiency
         
-        water_input = base_precipitation * soil_absorption
-        
-        
-        # 2. EVAPORATION LOSS (clima + gestione)
+        # 4. EVAPORATION LOSS (ora influenzato dal nexus energetico)
         climate_evap_stress = 0.4 * (1 - sc["climate"] * 0.1)
-        
         management_loss = 0.3 * (1 - evap_reduction / 100)
+        evaporation_loss = 60 * (climate_evap_stress + management_loss - evap_reduction_solar)
         
-        evaporation_loss = 60 * (climate_evap_stress + management_loss)
-        
-        
-        # 3. AGRICULTURAL CONSUMPTION
+        # 5. COSTO IRRIGAZIONE (nuovo: influenza il MOL)
         crop_demand_factor = c["fabbisogno_irr"] / 1000
         agricultural_use = 40 * crop_demand_factor
+        costo_irrigazione = agricultural_use * costo_acqua
         
-        
-        # 4. BUFFER EFFECT (biochar + SOM = ritenzione)
-        retention_buffer = (som * 5) + (biochar_input * 2.5)
-        
-        
-        # 5. FINAL WATER STOCK (bounded system)
-        water_stock = (
-            water_input
-            - evaporation_loss
-            - agricultural_use
-            + retention_buffer
-        )
+        # 6. FINAL WATER STOCK
+        retention_buffer = (som * 5) + (biochar_input * 2.5 * efficiency)
+        water_stock = (water_input - evaporation_loss - agricultural_use + retention_buffer)
+        water_stock = max(10, water_stock)
         
         # stabilizzazione (mai collasso a zero immediato)
         water_stock = max(10, water_stock)
