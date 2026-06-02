@@ -282,6 +282,7 @@ if st.sidebar.checkbox("Usa parametri rigenerativi di default"):
     # Mostriamo i valori ma non li rendiamo modificabili se è attiva la spunta
     st.sidebar.text(f"Ritenzione: {water_retention}% (auto)")
     st.sidebar.text(f"Rid. Evap: {evap_reduction}% (auto)")
+    st.sidebar.text(f"Stabilità Agro: {agro_stability}% (auto)")
 else:
     water_retention = st.sidebar.slider("Water Retention Capacity", 0, 100, defaults["ret"])
     evap_reduction = st.sidebar.slider("Evaporation Reduction", 0, 100, defaults["evap"])
