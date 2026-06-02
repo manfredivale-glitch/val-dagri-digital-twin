@@ -253,8 +253,7 @@ def run_simulation(sc):
             price_trend
         )
 
-        mol_ha = (resa * prezzo_effettivo) - c["costo_base"]
-
+        mol_ha = (resa * prezzo_effettivo) - c["costo_base"] - costo_irrigazione
         # -----------------------------
         # 8. STORE
         # -----------------------------
