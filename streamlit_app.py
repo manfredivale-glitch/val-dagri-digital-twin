@@ -20,6 +20,8 @@ soil_type = st.sidebar.selectbox(
     ]
 )
 
+amendment_type = st.sidebar.selectbox("Tipo Emendamento", ["Biochar (Pyro)", "Hydrochar"])
+
 soil_config = {
     "Sandy Degraded": {
         "som_init": 0.8,
@@ -119,15 +121,18 @@ sc = scenario_config[scenario]
 
 def get_efficiency_factor(dosage, texture):
     # Applica il limite MDPI per evitare occlusione pori
-    thresholds = {"Sandy Degraded": 15, "Clay Agricultural": 25, "Mediterranean Calcareous": 20}
-    limit = thresholds.get(texture, 20)
-    return 1.0 if dosage <= limit else max(0.5, 1 - (dosage - limit) * 0.05)
+    thresholds = {"Sandy Degraded": 12, "Clay Agricultural": 25, "Mediterranean Calcareous": 20}
+    limit = thresholds.get(texture, 15)
+    return 1.0 if dosage <= limit else max(0.4, 1 - (dosage - limit) * 0.05)
 
 def get_bca_uplift(dosage, texture):
     # Normalizzazione basata su Meta-analisi 2019
     # Ritorna l'incremento di AWC (Available Water Content)
     coeffs = {"Sandy Degraded": 0.45, "Clay Agricultural": 0.14, "Mediterranean Calcareous": 0.20}
     return dosage * 0.70 * coeffs.get(texture, 0.2) * 0.01
+
+def get_aging_factor(anno, type):
+    return min(1.0, (anno / 1.5)) if type == "Hydrochar" else min(1.0, (anno / 3.0))
 
 def run_simulation(sc):
 
@@ -192,7 +197,12 @@ def run_simulation(sc):
         
         # 2. CALCOLO COEFFICIENTI SCIENTIFICI
         efficiency = get_efficiency_factor(biochar_input, soil_type)
-        bca_bonus = get_bca_uplift(biochar_input, soil_type)
+        bca_bonus = get_bca_uplift(biochar_input, soil_type
+
+        # Integriamo qui la logica temporale (Aging)
+        # Assumiamo che l'utente abbia selezionato amendment_type tramite sidebar
+        aging = get_aging_factor(anno, amendment_type)
+        effective_bonus = bca_raw * aging * efficiency                                   
         
         # 3. WATER INPUT (base + bonus biochar * efficienza fisica)
         base_precipitation = 80 * soil["water_factor"]
