@@ -83,11 +83,21 @@ biomassa_forestale = st.sidebar.slider("Biomassa dai boschi (ton/ha)", 0, 50, 10
 
 st.sidebar.subheader("Nexus Energetico")
 copertura_agrivoltaico = st.sidebar.slider("Copertura Agrivoltaico (%)", 0, 100, 0)
-st.sidebar.subheader("Regenerative Water System")
 
-water_retention = st.sidebar.slider("Water Retention Capacity", 0, 100, 30)
-evap_reduction = st.sidebar.slider("Evaporation Reduction", 0, 100, 20)
-agro_stability = st.sidebar.slider("Agroecological Stability", 0, 100, 25)
+st.sidebar.subheader("Regenerative Water System")
+defaults = get_default_regen_params(soil_type, amendment_type)
+
+if st.sidebar.checkbox("Usa parametri rigenerativi di default"):
+    water_retention = defaults["ret"]
+    evap_reduction = defaults["evap"]
+    agro_stability = defaults["stab"]
+    # Mostriamo i valori ma non li rendiamo modificabili se è attiva la spunta
+    st.sidebar.text(f"Ritenzione: {water_retention}% (auto)")
+    st.sidebar.text(f"Rid. Evap: {evap_reduction}% (auto)")
+else:
+    water_retention = st.sidebar.slider("Water Retention Capacity", 0, 100, defaults["ret"])
+    evap_reduction = st.sidebar.slider("Evaporation Reduction", 0, 100, defaults["evap"])
+    agro_stability = st.sidebar.slider("Agroecological Stability", 0, 100, defaults["stab"])
 
 coltura = st.sidebar.selectbox("Seleziona Coltura", ["Cereali Antichi", "Mandorle", "Orticole Premium", "Mix Biodiversità"])
 
@@ -162,6 +172,24 @@ def get_recommended_strategy(soil_type):
         "Organic High Carbon": {"type": "Hydrochar", "dosage": 5}
     }
     return strategies.get(soil_type, {"type": "Hydrochar", "dosage": 10})
+
+def get_default_regen_params(soil_type, amendment_type):
+    # Base params per ogni tipo di suolo
+    # (Retention, Evaporation, Stability)
+    base_matrix = {
+        "Sandy Degraded": (20, 10, 10),
+        "Clay Agricultural": (60, 40, 50),
+        "Contaminated Brownfield": (30, 20, 20)
+    }
+    ret, evap, stab = base_matrix.get(soil_type, (40, 25, 30))
+    
+    # L'Hydrochar (rispetto al Pyro) ha un bonus maggiore sulla ritenzione idrica
+    if amendment_type == "Hydrochar":
+        ret += 15
+    else:
+        ret += 5
+        
+    return {"ret": ret, "evap": evap, "stab": stab}
 
 def run_simulation(sc, amendment_type):
 
