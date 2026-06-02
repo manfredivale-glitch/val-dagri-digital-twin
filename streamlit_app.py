@@ -117,6 +117,18 @@ scenario_config = {
 sc = scenario_config[scenario]
 # --- 2. LOGICA DI CALCOLO DINAMICA ---
 
+def get_efficiency_factor(dosage, texture):
+    # Applica il limite MDPI per evitare occlusione pori
+    thresholds = {"Sandy Degraded": 15, "Clay Agricultural": 25, "Mediterranean Calcareous": 20}
+    limit = thresholds.get(texture, 20)
+    return 1.0 if dosage <= limit else max(0.5, 1 - (dosage - limit) * 0.05)
+
+def get_bca_uplift(dosage, texture):
+    # Normalizzazione basata su Meta-analisi 2019
+    # Ritorna l'incremento di AWC (Available Water Content)
+    coeffs = {"Sandy Degraded": 0.45, "Clay Agricultural": 0.14, "Mediterranean Calcareous": 0.20}
+    return dosage * 0.70 * coeffs.get(texture, 0.2) * 0.01
+
 def run_simulation(sc):
 
     data = []
