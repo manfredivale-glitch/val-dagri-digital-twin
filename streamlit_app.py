@@ -134,7 +134,7 @@ def get_bca_uplift(dosage, texture):
 def get_aging_factor(anno, type):
     return min(1.0, (anno / 1.5)) if type == "Hydrochar" else min(1.0, (anno / 3.0))
 
-def run_simulation(sc):
+def run_simulation(sc, amendment_type):
 
     data = []
     som = soil["som_init"]
@@ -197,7 +197,7 @@ def run_simulation(sc):
         
         # 2. CALCOLO COEFFICIENTI SCIENTIFICI
         efficiency = get_efficiency_factor(biochar_input, soil_type)
-        bca_bonus = get_bca_uplift(biochar_input, soil_type
+        bca_raw = get_bca_uplift(biochar_input, soil_type)
 
         # Integriamo qui la logica temporale (Aging)
         # Assumiamo che l'utente abbia selezionato amendment_type tramite sidebar
@@ -207,7 +207,7 @@ def run_simulation(sc):
         # 3. WATER INPUT (base + bonus biochar * efficienza fisica)
         base_precipitation = 80 * soil["water_factor"]
         soil_absorption = 0.3 + (som * 0.06) + (biomassa_forestale * 0.002)
-        water_input = base_precipitation * (soil_absorption + bca_bonus) * efficiency
+        water_input = base_precipitation * (soil_absorption + effective_bonus) * efficiency
         
         # 4. EVAPORATION LOSS (ora influenzato dal nexus energetico)
         climate_evap_stress = 0.4 * (1 - sc["climate"] * 0.1)
@@ -288,11 +288,11 @@ def run_simulation(sc):
     )
     
 # --- 3. OUTPUT ---
-df_base = run_simulation(scenario_config["Base Case"])
+df_base = run_simulation(scenario_config["Base Case"], amendment_type)
 
-df_up = run_simulation(scenario_config["Upside Case"])
+df_up = run_simulation(scenario_config["Upside Case"], amendment_type)
 
-df_down = run_simulation(scenario_config["Downside Case"])
+df_down = run_simulation(scenario_config["Downside Case"], amendment_type)
 
 df = {
     "Base Case": df_base,
